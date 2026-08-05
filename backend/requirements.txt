@@ -64,10 +64,12 @@ types-pyasn1==0.6.0.20260408
 types-python-jose==3.5.0.20260408
 typing_extensions==4.16.0
 uvicorn==0.30.6
-loguru==0.7.2
 celery==5.4.0
 openai==1.40.6
 watchfiles==1.2.0
 websockets==16.1.1
 celery
 openai>=1.40.0
+loguru==0.7.2
+slowapi==0.1.9
+prometheus-fastapi-instrumentator==7.0.0
