@@ -9,7 +9,7 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { store } from '@/store';
 import { logout, setTokens } from '@/store/authSlice';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/v1`;
 
 // Create axios instance
 const api = axios.create({
