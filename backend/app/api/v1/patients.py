@@ -29,9 +29,7 @@ async def get_my_profile(
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     """Get the authenticated patient's profile."""
-    result = await db.execute(
-        select(Patient).where(Patient.user_id == current_user.id)
-    )
+    result = await db.execute(select(Patient).where(Patient.user_id == current_user.id))
     patient = result.scalar_one_or_none()
 
     if not patient:
@@ -52,9 +50,7 @@ async def update_my_profile(
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     """Update the authenticated patient's profile."""
-    result = await db.execute(
-        select(Patient).where(Patient.user_id == current_user.id)
-    )
+    result = await db.execute(select(Patient).where(Patient.user_id == current_user.id))
     patient = result.scalar_one_or_none()
 
     if not patient:
@@ -132,9 +128,7 @@ async def get_patient(
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     """Get patient profile by ID."""
-    result = await db.execute(
-        select(Patient).where(Patient.id == patient_id)
-    )
+    result = await db.execute(select(Patient).where(Patient.id == patient_id))
     patient = result.scalar_one_or_none()
 
     if not patient:

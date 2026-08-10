@@ -44,10 +44,11 @@ async def register(
     """
     service = AuthService(db)
     result = await service.register(data)
-    return SuccessResponse(
+    response = SuccessResponse(
         message="Account created successfully",
         data=result,
     )
+    return response
 
 
 @router.post(
@@ -66,10 +67,11 @@ async def login(
     """
     service = AuthService(db)
     result = await service.login(data)
-    return SuccessResponse(
+    response = SuccessResponse(
         message="Login successful",
         data=result,
     )
+    return response
 
 
 @router.post(
@@ -89,10 +91,11 @@ async def refresh_token(
     """
     service = AuthService(db)
     tokens = await service.refresh_tokens(data.refresh_token)
-    return SuccessResponse(
+    response = SuccessResponse(
         message="Token refreshed successfully",
         data=tokens.model_dump(),
     )
+    return response
 
 
 @router.get(
