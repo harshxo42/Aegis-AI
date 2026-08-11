@@ -1,0 +1,17 @@
+.env
+.env.*
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.db
+.git/
+.github/
+.vscode/
+tests/
+install_log.txt
+mypy_out.txt
