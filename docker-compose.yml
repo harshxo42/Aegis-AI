@@ -48,6 +48,7 @@ services:
       start_period: 5s
 
   backend:
+    build: ./backend
     image: aegis-ai-backend:latest
     container_name: aegis_backend
     restart: unless-stopped

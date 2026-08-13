@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 from loguru import logger
 import json
+import openai
 from openai import AsyncOpenAI
 
 from app.api.deps import get_db, get_current_user
@@ -101,16 +102,16 @@ class MedicalAIService:
     """
 
     def __init__(self) -> None:
-        self.use_real_llm = bool(settings.OPENAI_API_KEY)
+        self.use_real_llm = bool(settings.XAI_API_KEY)
         if self.use_real_llm:
-            self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            self.client = AsyncOpenAI(api_key=settings.XAI_API_KEY, base_url="https://api.x.ai/v1")
 
     async def chat(self, message: str) -> str:
         """
         Chat with the Aegis AI assistant.
         """
         if not self.use_real_llm:
-            return "I am Aegis AI, your emergency healthcare assistant. (Mock response: OpenAI API key is not configured on the server)."
+            return "I am Aegis AI, your emergency healthcare assistant. (Mock response: xAI API key is not configured on the server)."
         
         system_prompt = (
             "You are Aegis AI, an emergency healthcare assistant. "
@@ -123,7 +124,7 @@ class MedicalAIService:
 
         try:
             response = await self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="grok-4.5",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": message},
@@ -132,8 +133,14 @@ class MedicalAIService:
                 temperature=0.7,
             )
             return response.choices[0].message.content or "I couldn't process your request."
+        except openai.AuthenticationError:
+            logger.error("xAI Authentication Error")
+            raise HTTPException(status_code=500, detail="AI Service configuration error.")
+        except openai.RateLimitError:
+            logger.error("xAI Rate Limit Error or Insufficient Quota")
+            raise HTTPException(status_code=429, detail="AI Service is currently busy. Please try again later.")
         except Exception as e:
-            logger.exception("OpenAI Chat Error: {}", e)
+            logger.exception("xAI Chat Error: {}", e)
             raise HTTPException(status_code=500, detail="AI Chat Service temporarily unavailable.")
 
     async def analyze_symptoms(
@@ -194,7 +201,7 @@ class MedicalAIService:
                 )
                 try:
                     response = await self.client.chat.completions.create(
-                        model="gpt-3.5-turbo",
+                        model="grok-4.5",
                         messages=[
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": user_prompt},
@@ -213,6 +220,12 @@ class MedicalAIService:
                         "action": str(result_data.get("action", "Consult a doctor.")),
                         "triage": str(result_data.get("triage", "MODERATE")).upper()
                     }
+                except openai.AuthenticationError:
+                    logger.error("xAI Authentication Error in prediction, falling back to rules")
+                    result = self._rule_based_fallback(symptoms_lower)
+                except openai.RateLimitError:
+                    logger.error("xAI Rate Limit/Quota Error in prediction, falling back to rules")
+                    result = self._rule_based_fallback(symptoms_lower)
                 except Exception as e:
                     logger.error(f"AI Prediction failed, falling back to rules: {e}")
                     # Fallback to rules if AI fails
@@ -233,7 +246,7 @@ class MedicalAIService:
             logger.info(
                 "AI_EVALUATION_METRICS",
                 model=(
-                    "openai-llm"
+                    "xai-grok"
                     if self.use_real_llm
                     else "mock-triage-v2"
                 ),
@@ -351,7 +364,7 @@ async def get_disease_prediction(
                 result_summary=prediction_result["disease"],
                 confidence=prediction_result["confidence"],
                 model_name=(
-                    "openai-llm"
+                    "xai-grok"
                     if ai_service.use_real_llm
                     else "mock-triage-v2"
                 ),

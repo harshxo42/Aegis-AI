@@ -34,12 +34,12 @@ Frontend (React)  ==[HTTPS/REST]==>  Backend (FastAPI)  ====>  PostgreSQL / Redi
 *   **Framework:** FastAPI, Python 3
 *   **Database:** PostgreSQL (SQLAlchemy ORM, Alembic migrations)
 *   **Caching & Queue:** Redis
-*   **AI Integration:** Official `AsyncOpenAI` Python SDK (Server-Side Only)
+*   **AI Integration:** Official `AsyncOpenAI` Python SDK configured for xAI (Server-Side Only)
 *   **Authentication:** JWT (JSON Web Tokens) with refresh token rotation
 
 ## 🤖 AI Integration & Security
 
-Aegis AI integrates the OpenAI API strictly through the FastAPI backend to ensure maximum security.
+Aegis AI integrates the xAI API strictly through the FastAPI backend to ensure maximum security.
 *   **No API keys** are ever exposed to the frontend or committed to source control.
 *   The AI operates as an assistant, strictly adhering to a safety-first system prompt that emphasizes emergency redirection and non-definitive diagnosis.
 
@@ -55,7 +55,7 @@ Aegis AI integrates the OpenAI API strictly through the FastAPI backend to ensur
 2.  Create a virtual environment: `python -m venv venv`
 3.  Activate the environment: `source venv/bin/activate` (or `venv\Scripts\activate` on Windows)
 4.  Install dependencies: `pip install -r requirements.txt`
-5.  Create a `.env` file based on `.env.example` and add your `OPENAI_API_KEY`.
+5.  Create a `.env` file based on `.env.example` and add your `XAI_API_KEY`.
 6.  Start Docker services (PostgreSQL & Redis): `docker-compose up -d`
 7.  Run migrations: `alembic upgrade head`
 8.  Start the server: `uvicorn app.main:app --reload`
