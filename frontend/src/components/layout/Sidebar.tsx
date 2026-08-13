@@ -125,7 +125,7 @@ const menuItems: MenuItem[] = [
 
 export default function Sidebar() {
   const dispatch = useAppDispatch();
-  const { sidebarCollapsed } = useAppSelector((state) => state.ui);
+  const { sidebarCollapsed, sidebarOpen } = useAppSelector((state) => state.ui);
   const { user } = useAppSelector((state) => state.auth);
   const location = useLocation();
 
@@ -136,7 +136,9 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="fixed left-0 top-0 h-screen z-40 flex flex-col transition-all duration-300 ease-in-out"
+      className={`fixed left-0 top-0 h-screen z-40 flex flex-col transition-all duration-300 ease-in-out ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}
       style={{
         width: sidebarCollapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)',
         background: 'var(--bg-secondary)',

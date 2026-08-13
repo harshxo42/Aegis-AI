@@ -605,11 +605,12 @@ async def test_ai_prediction_patient_without_profile(client: AsyncClient, db_ses
     )
     assert response.status_code == 200
 
-def test_medical_ai_service_empty_symptoms():
+@pytest.mark.asyncio
+async def test_medical_ai_service_empty_symptoms():
     from app.api.v1.ai import MedicalAIService
     service = MedicalAIService()
     with pytest.raises(ValueError, match="Symptoms cannot be empty"):
-        service.analyze_symptoms("   ", 30, "male", None)
+        await service.analyze_symptoms("   ", 30, "male", None)
 
 @pytest.mark.asyncio
 async def test_ai_prediction_exception_handling(client: AsyncClient, monkeypatch):

@@ -192,7 +192,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                <p className="text-sm font-medium tracking-wide" style={{ color: 'var(--text-muted)' }}>
                   {stat.label}
                 </p>
                 <p className="text-3xl font-bold mt-2" style={{ color: stat.color }}>
@@ -258,20 +258,19 @@ export default function DashboardPage() {
           </div>
           <div className="glass-card overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="bg-[var(--bg-tertiary)]/50">
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <th className="text-left py-3 px-4 font-semibold" style={{ color: 'var(--text-muted)' }}>Type</th>
-                  <th className="text-left py-3 px-4 font-semibold" style={{ color: 'var(--text-muted)' }}>Severity</th>
-                  <th className="text-left py-3 px-4 font-semibold" style={{ color: 'var(--text-muted)' }}>Status</th>
-                  <th className="text-left py-3 px-4 font-semibold" style={{ color: 'var(--text-muted)' }}>Time</th>
+                  <th className="text-left py-3 px-4 font-semibold text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Type</th>
+                  <th className="text-left py-3 px-4 font-semibold text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Severity</th>
+                  <th className="text-left py-3 px-4 font-semibold text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Status</th>
+                  <th className="text-left py-3 px-4 font-semibold text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Time</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-[var(--border-color)]">
                 {stats.recent_emergencies.map((e) => (
                   <tr
                     key={e.id}
                     className="transition-colors hover:bg-[var(--bg-hover)] cursor-pointer"
-                    style={{ borderBottom: '1px solid var(--border-color)' }}
                   >
                     <td className="py-3 px-4 capitalize">{e.type}</td>
                     <td className="py-3 px-4">
@@ -284,7 +283,7 @@ export default function DashboardPage() {
                         {e.status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="py-3 px-4" style={{ color: 'var(--text-muted)' }}>
+                    <td className="py-3 px-4 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
                       {e.requested_at ? new Date(e.requested_at).toLocaleDateString() : '-'}
                     </td>
                   </tr>

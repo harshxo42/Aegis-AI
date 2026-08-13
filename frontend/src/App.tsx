@@ -29,6 +29,7 @@ const NotificationsPage = React.lazy(() => import('@/features/notifications/Noti
 const AIChatPage = React.lazy(() => import('@/features/ai/AIChatPage'));
 const AmbulanceDashboardPage = React.lazy(() => import('@/features/ambulance/AmbulanceDashboardPage'));
 const AnalyticsPage = React.lazy(() => import('@/features/analytics/AnalyticsPage'));
+const SettingsPage = React.lazy(() => import('@/features/settings/SettingsPage'));
 
 // Loading Fallback
 const PageLoader = () => (
@@ -126,7 +127,7 @@ export default function App() {
               <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/admin/users" element={<div className="p-8">User Management (Coming Soon)</div>} />
-              <Route path="/settings" element={<div className="p-8">Settings (Coming Soon)</div>} />
+              <Route path="/settings" element={<SettingsPage />} />
             </Route>
 
             {/* Catch All */}

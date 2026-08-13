@@ -55,8 +55,8 @@ export default function LoginPage() {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="relative z-10 w-full max-w-md"
       >
-        <div
-          className="glass-card p-8"
+          <div
+          className="glass-card p-6 sm:p-8 w-full"
           style={{ background: 'rgba(17, 24, 39, 0.7)' }}
         >
           {/* Logo */}
@@ -92,7 +92,7 @@ export default function LoginPage() {
                 color: 'var(--danger-400)',
               }}
             >
-              <AlertCircle size={16} />
+              <AlertCircle size={16} className="flex-shrink-0" />
               <span className="text-sm">{error}</span>
             </motion.div>
           )}
@@ -115,7 +115,7 @@ export default function LoginPage() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="you@example.com"
                   required
-                  className="w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-[var(--primary-500)]"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-[var(--primary-500)]"
                   style={{
                     background: 'var(--bg-tertiary)',
                     border: '1px solid var(--border-color)',
@@ -142,7 +142,7 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   required
                   minLength={6}
-                  className="w-full pl-11 pr-12 py-3 rounded-xl text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-[var(--primary-500)]"
+                  className="w-full pl-10 pr-12 py-3 rounded-xl text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-[var(--primary-500)]"
                   style={{
                     background: 'var(--bg-tertiary)',
                     border: '1px solid var(--border-color)',
@@ -152,7 +152,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 focus:outline-none"
                   style={{ color: 'var(--text-muted)' }}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -160,16 +160,16 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="rounded" />
-                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" className="w-4 h-4 rounded border-gray-500 bg-[var(--bg-tertiary)] text-[var(--primary-500)] focus:ring-[var(--primary-500)] focus:ring-offset-[var(--bg-card)] focus:ring-offset-2 transition-colors cursor-pointer" />
+                <span className="text-sm select-none" style={{ color: 'var(--text-muted)' }}>
                   Remember me
                 </span>
               </label>
               <Link
                 to="/forgot-password"
-                className="text-sm font-medium"
+                className="text-sm font-medium transition-colors hover:text-[var(--primary-300)]"
                 style={{ color: 'var(--primary-400)' }}
               >
                 Forgot password?
@@ -181,7 +181,7 @@ export default function LoginPage() {
               disabled={isLoading}
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
-              className="w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-50"
+              className="w-full mt-2 py-3.5 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-50"
               style={{
                 background: 'linear-gradient(135deg, var(--primary-600), var(--primary-500))',
                 boxShadow: '0 4px 15px rgba(59, 130, 246, 0.3)',
@@ -199,21 +199,36 @@ export default function LoginPage() {
           </form>
 
           {/* Demo Credentials */}
-          <div className="mt-6 p-4 rounded-xl" style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
-            <p className="text-xs font-medium mb-2" style={{ color: 'var(--primary-400)' }}>
-              Demo Credentials
-            </p>
-            <div className="space-y-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-              <p>Admin: admin@aegisai.com / Admin@123</p>
-              <p>Patient: patient@aegisai.com / Patient@123</p>
-              <p>Doctor: dr.mehta@aegisai.com / Doctor@123</p>
+          <div className="mt-8 p-4 rounded-xl relative overflow-hidden" style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
+            <div className="absolute top-0 right-0 bg-[var(--warning-500)]/20 text-[var(--warning-400)] text-[10px] font-bold px-2 py-1 rounded-bl-lg border-b border-l border-[var(--warning-500)]/30 tracking-wider">
+              DEMO ONLY
             </div>
+            <p className="text-xs font-semibold mb-3 tracking-wide uppercase" style={{ color: 'var(--primary-400)' }}>
+              Demo Accounts
+            </p>
+            <div className="space-y-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+              <div className="flex justify-between items-center bg-[var(--bg-tertiary)]/50 p-2 rounded">
+                <span className="font-medium text-[var(--text-primary)]">Admin</span>
+                <span className="font-mono">admin@aegisai.com</span>
+              </div>
+              <div className="flex justify-between items-center bg-[var(--bg-tertiary)]/50 p-2 rounded">
+                <span className="font-medium text-[var(--text-primary)]">Patient</span>
+                <span className="font-mono">patient@aegisai.com</span>
+              </div>
+              <div className="flex justify-between items-center bg-[var(--bg-tertiary)]/50 p-2 rounded">
+                <span className="font-medium text-[var(--text-primary)]">Doctor</span>
+                <span className="font-mono">dr.mehta@aegisai.com</span>
+              </div>
+            </div>
+            <p className="text-[10px] text-center mt-3 opacity-60 italic text-[var(--danger-400)]">
+              Never use real credentials on demo environments.
+            </p>
           </div>
 
           {/* Sign Up Link */}
           <p className="text-center mt-6 text-sm" style={{ color: 'var(--text-muted)' }}>
             Don't have an account?{' '}
-            <Link to="/register" className="font-semibold" style={{ color: 'var(--primary-400)' }}>
+            <Link to="/register" className="font-semibold transition-colors hover:text-[var(--primary-300)]" style={{ color: 'var(--primary-400)' }}>
               Create Account
             </Link>
           </p>

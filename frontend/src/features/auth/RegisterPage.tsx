@@ -68,7 +68,7 @@ export default function RegisterPage() {
         animate={{ opacity: 1, y: 0 }}
         className="relative z-10 w-full max-w-lg"
       >
-        <div className="glass-card p-8" style={{ background: 'rgba(17, 24, 39, 0.7)' }}>
+        <div className="glass-card p-6 sm:p-8 w-full" style={{ background: 'rgba(17, 24, 39, 0.7)' }}>
           {/* Logo */}
           <div className="text-center mb-6">
             <div
@@ -176,7 +176,7 @@ export default function RegisterPage() {
                       placeholder="John Doe"
                       required
                       minLength={2}
-                      className="w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
                       style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                     />
                   </div>
@@ -192,7 +192,7 @@ export default function RegisterPage() {
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       placeholder="you@example.com"
                       required
-                      className="w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
                       style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                     />
                   </div>
@@ -207,7 +207,7 @@ export default function RegisterPage() {
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       placeholder="+91 98765 43210"
-                      className="w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
                       style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                     />
                   </div>
@@ -224,10 +224,10 @@ export default function RegisterPage() {
                       placeholder="Min 8 chars, uppercase, lowercase, digit"
                       required
                       minLength={8}
-                      className="w-full pl-11 pr-12 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
+                      className="w-full pl-10 pr-12 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
                       style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                     />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 focus:outline-none" style={{ color: 'var(--text-muted)' }}>
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
@@ -244,7 +244,7 @@ export default function RegisterPage() {
                       placeholder="Re-enter your password"
                       required
                       minLength={8}
-                      className="w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
                       style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                     />
                   </div>
@@ -280,7 +280,7 @@ export default function RegisterPage() {
 
           <p className="text-center mt-6 text-sm" style={{ color: 'var(--text-muted)' }}>
             Already have an account?{' '}
-            <Link to="/login" className="font-semibold" style={{ color: 'var(--primary-400)' }}>
+            <Link to="/login" className="font-semibold transition-colors hover:text-[var(--primary-300)]" style={{ color: 'var(--primary-400)' }}>
               Sign In
             </Link>
           </p>

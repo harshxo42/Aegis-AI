@@ -12,7 +12,7 @@ import { emergenciesAPI } from '@/api/client';
 import Map from '@/components/maps/Map';
 import { userLocationIcon } from '@/components/maps/MapIcons';
 import { Marker, Popup } from 'react-leaflet';
-import { AlertTriangle, Phone, ShieldAlert, HeartPulse, Activity } from 'lucide-react';
+import { AlertTriangle, Phone, ShieldAlert, HeartPulse, Activity, ChevronRight } from 'lucide-react';
 import type { EmergencyType } from '@/types';
 
 const emergencyTypes: { value: EmergencyType; label: string; icon: React.ReactNode; color: string }[] = [
@@ -266,25 +266,5 @@ export default function EmergencySOSPage() {
         </p>
       </div>
     </div>
-  );
-}
-
-// Internal icon import for this file since ChevronRight was missed in imports above
-function ChevronRight(props: any) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={props.size || 24}
-      height={props.size || 24}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="m9 18 6-6-6-6" />
-    </svg>
   );
 }

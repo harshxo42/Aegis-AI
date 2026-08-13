@@ -53,11 +53,6 @@ function LocationPicker({ onLocationSelect }: LocationPickerProps) {
     const handleMapClick = (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
 
-      console.log('Map location selected:', {
-        latitude: lat,
-        longitude: lng,
-      });
-
       onLocationSelect(lat, lng);
     };
 
