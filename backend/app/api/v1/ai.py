@@ -129,6 +129,12 @@ class MedicalAIService:
             "For severe or life-threatening symptoms, always recommend emergency medical care."
         )
 
+        logger.info(
+            "AI provider: OpenRouter | AI model: openrouter/free | OpenRouter API key configured: {}",
+            self.use_real_llm
+        )
+        logger.info("OpenRouter request started (Chat)")
+
         try:
             response = await self.client.chat.completions.create(
                 model="openrouter/free",
@@ -139,15 +145,54 @@ class MedicalAIService:
                 max_tokens=300,
                 temperature=0.7,
             )
-            return response.choices[0].message.content or "I couldn't process your request."
-        except openai.AuthenticationError:
-            logger.error("OpenRouter Authentication Error")
+            logger.info("OpenRouter response received")
+            
+            # Safe validation of response structure
+            if not response:
+                logger.error("OpenRouter returned empty response object")
+                raise ValueError("Empty response object")
+                
+            if not hasattr(response, "choices") or not response.choices:
+                logger.error("OpenRouter response has no choices")
+                raise ValueError("No choices in response")
+                
+            choice = response.choices[0]
+            finish_reason = getattr(choice, "finish_reason", "unknown")
+            
+            if not hasattr(choice, "message") or not choice.message:
+                logger.error(f"OpenRouter choice has no message. Finish reason: {finish_reason}")
+                raise ValueError("No message in choice")
+                
+            content = choice.message.content
+            
+            if not content:
+                logger.error(f"OpenRouter message content is empty. Finish reason: {finish_reason}")
+                raise ValueError("Empty content")
+                
+            logger.info(f"AI response length: {len(content)}")
+            return content
+            
+        except openai.AuthenticationError as e:
+            logger.error("OpenRouter Authentication Error: {}", str(e))
             raise HTTPException(status_code=401, detail="AI service is not configured correctly on the server.")
-        except openai.RateLimitError:
-            logger.error("OpenRouter Rate Limit Error or Insufficient Quota")
+        except openai.PermissionDeniedError as e:
+            logger.error("OpenRouter Permission Denied / 403 Error: {}", str(e))
+            raise HTTPException(status_code=403, detail="AI service access denied.")
+        except openai.RateLimitError as e:
+            logger.error("OpenRouter Rate Limit Error or Insufficient Quota: {}", str(e))
             raise HTTPException(status_code=429, detail="AI service rate limit reached. Please try again later.")
+        except openai.APITimeoutError as e:
+            logger.error("OpenRouter Timeout Error: {}", str(e))
+            raise HTTPException(status_code=504, detail="AI service timeout. Please try again later.")
+        except openai.APIError as e:
+            status_code = getattr(e, 'status_code', 'unknown')
+            logger.error("OpenRouter API Error (Status {}): {}", status_code, str(e))
+            raise HTTPException(status_code=502, detail="AI service provider error. Please try again later.")
+        except ValueError as e:
+            logger.error("OpenRouter Response Parsing Error: {}", str(e))
+            raise HTTPException(status_code=500, detail="AI service returned invalid response format.")
         except Exception as e:
-            logger.exception("OpenRouter Chat Error: {}", e)
+            logger.exception("OpenRouter Chat Error: {}", str(e))
             raise HTTPException(status_code=500, detail="AI service is temporarily unavailable. Please try again later.")
 
     async def analyze_symptoms(
@@ -206,6 +251,12 @@ class MedicalAIService:
                     f"Gender: {gender}\n"
                     f"History: {history or 'None'}"
                 )
+                logger.info(
+                    "AI provider: OpenRouter | AI model: openrouter/free | OpenRouter API key configured: {}",
+                    self.use_real_llm
+                )
+                logger.info("OpenRouter request started (Predict)")
+
                 try:
                     response = await self.client.chat.completions.create(
                         model="openrouter/free",
@@ -216,9 +267,25 @@ class MedicalAIService:
                         temperature=0.3,
                         response_format={ "type": "json_object" }
                     )
-                    content = response.choices[0].message.content
+                    logger.info("OpenRouter response received")
+                    
+                    if not response or not hasattr(response, "choices") or not response.choices:
+                        logger.error("OpenRouter response has no choices")
+                        raise ValueError("No choices in response")
+                        
+                    choice = response.choices[0]
+                    finish_reason = getattr(choice, "finish_reason", "unknown")
+                    
+                    if not hasattr(choice, "message") or not choice.message:
+                        logger.error(f"OpenRouter choice has no message. Finish reason: {finish_reason}")
+                        raise ValueError("No message in choice")
+                        
+                    content = choice.message.content
                     if not content:
+                        logger.error(f"OpenRouter message content is empty. Finish reason: {finish_reason}")
                         raise ValueError("Empty response from AI")
+                        
+                    logger.info(f"AI response length: {len(content)}")
                     result_data = json.loads(content)
                     
                     result = {
@@ -227,14 +294,24 @@ class MedicalAIService:
                         "action": str(result_data.get("action", "Consult a doctor.")),
                         "triage": str(result_data.get("triage", "MODERATE")).upper()
                     }
-                except openai.AuthenticationError:
-                    logger.error("OpenRouter Authentication Error in prediction, falling back to rules")
+                except openai.AuthenticationError as e:
+                    logger.error("OpenRouter Authentication Error in prediction: {}", str(e))
                     result = self._rule_based_fallback(symptoms_lower)
-                except openai.RateLimitError:
-                    logger.error("OpenRouter Rate Limit/Quota Error in prediction, falling back to rules")
+                except openai.PermissionDeniedError as e:
+                    logger.error("OpenRouter Permission Denied Error in prediction: {}", str(e))
+                    result = self._rule_based_fallback(symptoms_lower)
+                except openai.RateLimitError as e:
+                    logger.error("OpenRouter Rate Limit/Quota Error in prediction: {}", str(e))
+                    result = self._rule_based_fallback(symptoms_lower)
+                except openai.APITimeoutError as e:
+                    logger.error("OpenRouter Timeout Error in prediction: {}", str(e))
+                    result = self._rule_based_fallback(symptoms_lower)
+                except openai.APIError as e:
+                    status_code = getattr(e, 'status_code', 'unknown')
+                    logger.error("OpenRouter API Error (Status {}) in prediction: {}", status_code, str(e))
                     result = self._rule_based_fallback(symptoms_lower)
                 except Exception as e:
-                    logger.error("OpenRouter Prediction Error: {}, falling back to rules", e)
+                    logger.error("OpenRouter Prediction Error: {}, falling back to rules", str(e))
                     # Fallback to rules if AI fails
                     result = self._rule_based_fallback(symptoms_lower)
             else:

@@ -635,3 +635,174 @@ async def test_ai_prediction_exception_handling(client: AsyncClient, monkeypatch
     )
     assert response.status_code == 500
     assert "temporarily unavailable" in response.json()["message"]
+
+
+# ============================================================
+# AI Chat Tests (OpenRouter)
+# ============================================================
+
+from unittest.mock import AsyncMock, MagicMock
+import openai
+from app.core.config import settings
+
+@pytest.fixture
+def mock_openrouter_env(monkeypatch):
+    """Force the AI service to think OpenRouter is configured."""
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "fake-test-key")
+
+@pytest.mark.asyncio
+async def test_ai_chat_missing_api_key_fallback(client: AsyncClient, monkeypatch):
+    """Test fallback when OPENROUTER_API_KEY is missing."""
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", None)
+    token = await authenticated_client_token(client, "ai-chat-fallback@test.com")
+    
+    response = await client.post(
+        "/api/v1/ai/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"message": "Hello"}
+    )
+    assert response.status_code == 200
+    assert "Mock response: OpenRouter API key is not configured" in response.json()["data"]["reply"]
+
+@pytest.mark.asyncio
+async def test_ai_chat_success(client: AsyncClient, monkeypatch, mock_openrouter_env):
+    """Test successful OpenRouter response."""
+    mock_client_instance = MagicMock()
+    mock_completion = AsyncMock()
+    
+    mock_choice = MagicMock()
+    mock_choice.message.content = "Real AI response from OpenRouter!"
+    mock_completion.choices = [mock_choice]
+    
+    mock_client_instance.chat.completions.create = AsyncMock(return_value=mock_completion)
+    monkeypatch.setattr("app.api.v1.ai.AsyncOpenAI", lambda **kw: mock_client_instance)
+    
+    token = await authenticated_client_token(client, "ai-chat-success@test.com")
+    response = await client.post(
+        "/api/v1/ai/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"message": "Hello"}
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["reply"] == "Real AI response from OpenRouter!"
+
+@pytest.mark.asyncio
+async def test_ai_chat_invalid_api_key_401(client: AsyncClient, monkeypatch, mock_openrouter_env):
+    """Test OpenRouter AuthenticationError (401)."""
+    mock_client_instance = MagicMock()
+    
+    async def mock_create(*args, **kwargs):
+        raise openai.AuthenticationError(message="Invalid token", response=MagicMock(), body=None)
+        
+    mock_client_instance.chat.completions.create = mock_create
+    monkeypatch.setattr("app.api.v1.ai.AsyncOpenAI", lambda **kw: mock_client_instance)
+    
+    token = await authenticated_client_token(client, "ai-chat-401@test.com")
+    response = await client.post(
+        "/api/v1/ai/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"message": "Hello"}
+    )
+    assert response.status_code == 401
+    assert "not configured correctly" in response.json()["message"]
+
+@pytest.mark.asyncio
+async def test_ai_chat_rate_limit_429(client: AsyncClient, monkeypatch, mock_openrouter_env):
+    """Test OpenRouter RateLimitError (429)."""
+    mock_client_instance = MagicMock()
+    
+    async def mock_create(*args, **kwargs):
+        raise openai.RateLimitError(message="Rate limit", response=MagicMock(), body=None)
+        
+    mock_client_instance.chat.completions.create = mock_create
+    monkeypatch.setattr("app.api.v1.ai.AsyncOpenAI", lambda **kw: mock_client_instance)
+    
+    token = await authenticated_client_token(client, "ai-chat-429@test.com")
+    response = await client.post(
+        "/api/v1/ai/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"message": "Hello"}
+    )
+    assert response.status_code == 429
+    assert "rate limit reached" in response.json()["message"]
+
+@pytest.mark.asyncio
+async def test_ai_chat_timeout(client: AsyncClient, monkeypatch, mock_openrouter_env):
+    """Test OpenRouter APITimeoutError."""
+    mock_client_instance = MagicMock()
+    
+    async def mock_create(*args, **kwargs):
+        raise openai.APITimeoutError(request=MagicMock())
+        
+    mock_client_instance.chat.completions.create = mock_create
+    monkeypatch.setattr("app.api.v1.ai.AsyncOpenAI", lambda **kw: mock_client_instance)
+    
+    token = await authenticated_client_token(client, "ai-chat-timeout@test.com")
+    response = await client.post(
+        "/api/v1/ai/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"message": "Hello"}
+    )
+    assert response.status_code == 504
+    assert "timeout" in response.json()["message"]
+
+@pytest.mark.asyncio
+async def test_ai_chat_empty_content(client: AsyncClient, monkeypatch, mock_openrouter_env):
+    """Test when OpenRouter returns empty content."""
+    mock_client_instance = MagicMock()
+    mock_completion = MagicMock()
+    
+    mock_choice = MagicMock()
+    mock_choice.message.content = ""
+    mock_completion.choices = [mock_choice]
+    
+    mock_client_instance.chat.completions.create = AsyncMock(return_value=mock_completion)
+    monkeypatch.setattr("app.api.v1.ai.AsyncOpenAI", lambda **kw: mock_client_instance)
+    
+    token = await authenticated_client_token(client, "ai-chat-empty@test.com")
+    response = await client.post(
+        "/api/v1/ai/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"message": "Hello"}
+    )
+    assert response.status_code == 500
+    assert "invalid response format" in response.json()["message"]
+
+@pytest.mark.asyncio
+async def test_ai_chat_malformed_response(client: AsyncClient, monkeypatch, mock_openrouter_env):
+    """Test when OpenRouter returns a response without choices."""
+    mock_client_instance = MagicMock()
+    mock_completion = MagicMock()
+    mock_completion.choices = []
+    
+    mock_client_instance.chat.completions.create = AsyncMock(return_value=mock_completion)
+    monkeypatch.setattr("app.api.v1.ai.AsyncOpenAI", lambda **kw: mock_client_instance)
+    
+    token = await authenticated_client_token(client, "ai-chat-malformed@test.com")
+    response = await client.post(
+        "/api/v1/ai/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"message": "Hello"}
+    )
+    assert response.status_code == 500
+    assert "invalid response format" in response.json()["message"]
+
+@pytest.mark.asyncio
+async def test_ai_chat_provider_exception(client: AsyncClient, monkeypatch, mock_openrouter_env):
+    """Test generic APIError."""
+    mock_client_instance = MagicMock()
+    
+    async def mock_create(*args, **kwargs):
+        raise openai.APIError(message="Provider down", request=MagicMock(), body=None)
+        
+    mock_client_instance.chat.completions.create = mock_create
+    monkeypatch.setattr("app.api.v1.ai.AsyncOpenAI", lambda **kw: mock_client_instance)
+    
+    token = await authenticated_client_token(client, "ai-chat-error@test.com")
+    response = await client.post(
+        "/api/v1/ai/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"message": "Hello"}
+    )
+    assert response.status_code == 502
+    assert "provider error" in response.json()["message"]
