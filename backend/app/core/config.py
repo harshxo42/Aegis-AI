@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # ── External APIs ────────────────────────────────────────────
-    XAI_API_KEY: Optional[str] = None
+    OPENROUTER_API_KEY: Optional[str] = None
     GOOGLE_MAPS_API_KEY: Optional[str] = None
 
     # ── File Upload ──────────────────────────────────────────────

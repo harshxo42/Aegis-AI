@@ -102,16 +102,23 @@ class MedicalAIService:
     """
 
     def __init__(self) -> None:
-        self.use_real_llm = bool(settings.XAI_API_KEY)
+        self.use_real_llm = bool(settings.OPENROUTER_API_KEY)
         if self.use_real_llm:
-            self.client = AsyncOpenAI(api_key=settings.XAI_API_KEY, base_url="https://api.x.ai/v1")
+            self.client = AsyncOpenAI(
+                api_key=settings.OPENROUTER_API_KEY, 
+                base_url="https://openrouter.ai/api/v1",
+                default_headers={
+                    "HTTP-Referer": "https://aegis-ai-1-eu4a.onrender.com",
+                    "X-Title": "Aegis AI"
+                }
+            )
 
     async def chat(self, message: str) -> str:
         """
         Chat with the Aegis AI assistant.
         """
         if not self.use_real_llm:
-            return "I am Aegis AI, your emergency healthcare assistant. (Mock response: xAI API key is not configured on the server)."
+            return "I am Aegis AI, your emergency healthcare assistant. (Mock response: OpenRouter API key is not configured on the server)."
         
         system_prompt = (
             "You are Aegis AI, an emergency healthcare assistant. "
@@ -124,7 +131,7 @@ class MedicalAIService:
 
         try:
             response = await self.client.chat.completions.create(
-                model="grok-4.5",
+                model="openrouter/free",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": message},
@@ -134,14 +141,14 @@ class MedicalAIService:
             )
             return response.choices[0].message.content or "I couldn't process your request."
         except openai.AuthenticationError:
-            logger.error("xAI Authentication Error")
-            raise HTTPException(status_code=500, detail="AI Service configuration error.")
+            logger.error("OpenRouter Authentication Error")
+            raise HTTPException(status_code=401, detail="AI service is not configured correctly on the server.")
         except openai.RateLimitError:
-            logger.error("xAI Rate Limit Error or Insufficient Quota")
-            raise HTTPException(status_code=429, detail="AI Service is currently busy. Please try again later.")
+            logger.error("OpenRouter Rate Limit Error or Insufficient Quota")
+            raise HTTPException(status_code=429, detail="AI service rate limit reached. Please try again later.")
         except Exception as e:
-            logger.exception("xAI Chat Error: {}", e)
-            raise HTTPException(status_code=500, detail="AI Chat Service temporarily unavailable.")
+            logger.exception("OpenRouter Chat Error: {}", e)
+            raise HTTPException(status_code=500, detail="AI service is temporarily unavailable. Please try again later.")
 
     async def analyze_symptoms(
         self,
@@ -201,7 +208,7 @@ class MedicalAIService:
                 )
                 try:
                     response = await self.client.chat.completions.create(
-                        model="grok-4.5",
+                        model="openrouter/free",
                         messages=[
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": user_prompt},
@@ -221,13 +228,13 @@ class MedicalAIService:
                         "triage": str(result_data.get("triage", "MODERATE")).upper()
                     }
                 except openai.AuthenticationError:
-                    logger.error("xAI Authentication Error in prediction, falling back to rules")
+                    logger.error("OpenRouter Authentication Error in prediction, falling back to rules")
                     result = self._rule_based_fallback(symptoms_lower)
                 except openai.RateLimitError:
-                    logger.error("xAI Rate Limit/Quota Error in prediction, falling back to rules")
+                    logger.error("OpenRouter Rate Limit/Quota Error in prediction, falling back to rules")
                     result = self._rule_based_fallback(symptoms_lower)
                 except Exception as e:
-                    logger.error(f"AI Prediction failed, falling back to rules: {e}")
+                    logger.error("OpenRouter Prediction Error: {}, falling back to rules", e)
                     # Fallback to rules if AI fails
                     result = self._rule_based_fallback(symptoms_lower)
             else:
@@ -246,7 +253,7 @@ class MedicalAIService:
             logger.info(
                 "AI_EVALUATION_METRICS",
                 model=(
-                    "xai-grok"
+                    "openrouter-free"
                     if self.use_real_llm
                     else "mock-triage-v2"
                 ),
@@ -364,7 +371,7 @@ async def get_disease_prediction(
                 result_summary=prediction_result["disease"],
                 confidence=prediction_result["confidence"],
                 model_name=(
-                    "xai-grok"
+                    "openrouter-free"
                     if ai_service.use_real_llm
                     else "mock-triage-v2"
                 ),
