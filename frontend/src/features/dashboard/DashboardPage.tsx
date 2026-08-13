@@ -256,7 +256,7 @@ export default function DashboardPage() {
               View All <ChevronRight size={14} />
             </button>
           </div>
-          <div className="glass-card overflow-hidden">
+          <div className="glass-card overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>

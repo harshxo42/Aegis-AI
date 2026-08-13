@@ -30,7 +30,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4">
+    <div className="min-h-screen flex items-center justify-center relative overflow-x-hidden px-4">
       {/* Animated background */}
       <div className="absolute inset-0" style={{ background: 'var(--bg-primary)' }}>
         <div className="absolute inset-0 gradient-mesh" />

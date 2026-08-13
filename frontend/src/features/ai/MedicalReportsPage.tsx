@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, UploadCloud, File, Trash2, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import api from '@/api/client';
+import { aiAPI } from '@/api/client';
 
 export default function MedicalReportsPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -65,11 +65,7 @@ export default function MedicalReportsPage() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await api.post('/ai/analyze-report', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await aiAPI.analyzeReport(formData);
 
       setResult(response.data.data.analysis);
       toast.success('Report analyzed successfully');
@@ -88,7 +84,12 @@ export default function MedicalReportsPage() {
             <FileText size={32} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Medical Reports</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold">Medical Reports</h1>
+              <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase">
+                Prototype Feature
+              </span>
+            </div>
             <p className="text-gray-400 text-sm mt-1">AI-powered OCR and Natural Language Processing for health records</p>
           </div>
         </div>

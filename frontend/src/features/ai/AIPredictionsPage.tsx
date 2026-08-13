@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Activity, AlertTriangle, User, Calendar, Bot, RefreshCw } from 'lucide-react';
-import api from '@/api/client';
+import { aiAPI } from '@/api/client';
 import { toast } from 'react-hot-toast';
 
 export default function AIPredictionsPage() {
@@ -40,7 +40,7 @@ export default function AIPredictionsPage() {
         age: parseInt(formData.age, 10),
       };
       
-      const response = await api.post('/ai/predict', payload);
+      const response = await aiAPI.predict(payload);
       setResult(response.data.data);
       toast.success('AI Prediction complete');
     } catch (error: any) {
@@ -90,7 +90,7 @@ export default function AIPredictionsPage() {
                 value={formData.symptoms}
                 onChange={(e) => setFormData({ ...formData, symptoms: e.target.value })}
                 placeholder="E.g. severe chest pain, shortness of breath, radiating pain to left arm..."
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)] resize-none h-28"
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)] resize-y min-h-[7rem] max-h-64"
                 style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                 required
               />
@@ -138,7 +138,7 @@ export default function AIPredictionsPage() {
                 value={formData.medical_history}
                 onChange={(e) => setFormData({ ...formData, medical_history: e.target.value })}
                 placeholder="E.g. hypertension, diabetes, previous surgeries..."
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)] resize-none h-20"
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)] resize-y min-h-[5rem] max-h-64"
                 style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
               />
             </div>

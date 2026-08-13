@@ -4,7 +4,7 @@
  * Configures routing, Toaster, and global providers.
  */
 
-import { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAppDispatch } from '@/store';
@@ -16,19 +16,19 @@ import { ProtectedRoute, PublicRoute } from '@/routes/guards';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 
 // Pages
-import LoginPage from '@/features/auth/LoginPage';
-import RegisterPage from '@/features/auth/RegisterPage';
-import DashboardPage from '@/features/dashboard/DashboardPage';
-import EmergencySOSPage from '@/features/emergency/EmergencySOSPage';
-import EmergenciesListPage from '@/features/emergency/EmergenciesListPage';
-import HospitalsPage from '@/features/hospital/HospitalsPage';
-import HospitalDetailsPage from '@/features/hospital/HospitalDetailsPage';
-import AIPredictionsPage from '@/features/ai/AIPredictionsPage';
-import MedicalReportsPage from '@/features/ai/MedicalReportsPage';
-import NotificationsPage from '@/features/notifications/NotificationsPage';
-import AIChatPage from '@/features/ai/AIChatPage';
-import AmbulanceDashboardPage from '@/features/ambulance/AmbulanceDashboardPage';
-import AnalyticsPage from '@/features/analytics/AnalyticsPage';
+const LoginPage = React.lazy(() => import('@/features/auth/LoginPage'));
+const RegisterPage = React.lazy(() => import('@/features/auth/RegisterPage'));
+const DashboardPage = React.lazy(() => import('@/features/dashboard/DashboardPage'));
+const EmergencySOSPage = React.lazy(() => import('@/features/emergency/EmergencySOSPage'));
+const EmergenciesListPage = React.lazy(() => import('@/features/emergency/EmergenciesListPage'));
+const HospitalsPage = React.lazy(() => import('@/features/hospital/HospitalsPage'));
+const HospitalDetailsPage = React.lazy(() => import('@/features/hospital/HospitalDetailsPage'));
+const AIPredictionsPage = React.lazy(() => import('@/features/ai/AIPredictionsPage'));
+const MedicalReportsPage = React.lazy(() => import('@/features/ai/MedicalReportsPage'));
+const NotificationsPage = React.lazy(() => import('@/features/notifications/NotificationsPage'));
+const AIChatPage = React.lazy(() => import('@/features/ai/AIChatPage'));
+const AmbulanceDashboardPage = React.lazy(() => import('@/features/ambulance/AmbulanceDashboardPage'));
+const AnalyticsPage = React.lazy(() => import('@/features/analytics/AnalyticsPage'));
 
 // Loading Fallback
 const PageLoader = () => (

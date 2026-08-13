@@ -6,7 +6,6 @@ and medical report understanding.
 """
 
 from datetime import datetime, timezone
-import random
 from typing import Any
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
@@ -14,6 +13,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 from loguru import logger
+import json
+from openai import AsyncOpenAI
 
 from app.api.deps import get_db, get_current_user
 from app.core.config import settings
@@ -70,6 +71,18 @@ class DiseasePredictionResponse(BaseModel):
     triage_level: str
 
 
+class AIChatRequest(BaseModel):
+    """Request schema for AI chat."""
+
+    message: str = Field(..., min_length=1, max_length=1000)
+
+
+class AIChatResponse(BaseModel):
+    """Response schema for AI chat."""
+
+    reply: str
+
+
 # ============================================================
 # AI Service
 # ============================================================
@@ -89,8 +102,41 @@ class MedicalAIService:
 
     def __init__(self) -> None:
         self.use_real_llm = bool(settings.OPENAI_API_KEY)
+        if self.use_real_llm:
+            self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
-    def analyze_symptoms(
+    async def chat(self, message: str) -> str:
+        """
+        Chat with the Aegis AI assistant.
+        """
+        if not self.use_real_llm:
+            return "I am Aegis AI, your emergency healthcare assistant. (Mock response: OpenAI API key is not configured on the server)."
+        
+        system_prompt = (
+            "You are Aegis AI, an emergency healthcare assistant. "
+            "You provide general health information, help users navigate Aegis features, "
+            "explain emergency procedures, and help with hospital/ambulance functionality. "
+            "You must clearly state that you are not a doctor, never claim a definitive diagnosis, "
+            "never invent medical facts, and never prescribe unsafe treatment. "
+            "For severe or life-threatening symptoms, always recommend emergency medical care."
+        )
+
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": message},
+                ],
+                max_tokens=300,
+                temperature=0.7,
+            )
+            return response.choices[0].message.content or "I couldn't process your request."
+        except Exception as e:
+            logger.exception("OpenAI Chat Error: {}", e)
+            raise HTTPException(status_code=500, detail="AI Chat Service temporarily unavailable.")
+
+    async def analyze_symptoms(
         self,
         symptoms: str,
         age: int,
@@ -106,17 +152,12 @@ class MedicalAIService:
         try:
             symptoms_lower = symptoms.lower().strip()
 
-            # ------------------------------------------------
-            # Basic validation
-            # ------------------------------------------------
-
             if not symptoms_lower:
                 raise ValueError("Symptoms cannot be empty")
 
             # ------------------------------------------------
-            # Emergency / critical symptoms
+            # Emergency / critical symptoms (Safety Layer)
             # ------------------------------------------------
-
             if (
                 "chest pain" in symptoms_lower
                 or "severe chest pain" in symptoms_lower
@@ -132,61 +173,59 @@ class MedicalAIService:
                     ),
                     "triage": "CRITICAL",
                 }
-
-            # ------------------------------------------------
-            # Fever + cough
-            # ------------------------------------------------
-
-            elif (
-                "fever" in symptoms_lower
-                and "cough" in symptoms_lower
-            ):
-                result = {
-                    "disease": "Possible Viral Respiratory Infection",
-                    "confidence": 82.0,
-                    "action": (
-                        "Rest and maintain hydration. "
-                        "Consult a healthcare professional if symptoms "
-                        "persist or worsen."
-                    ),
-                    "triage": "LOW",
-                }
-
-            # ------------------------------------------------
-            # Headache
-            # ------------------------------------------------
-
-            elif "headache" in symptoms_lower:
-                result = {
-                    "disease": "Possible Headache / Migraine",
-                    "confidence": 70.0,
-                    "action": (
-                        "Monitor symptoms and consider medical consultation "
-                        "if severe, persistent, or associated with other "
-                        "concerning symptoms."
-                    ),
-                    "triage": "MODERATE",
-                }
-
-            # ------------------------------------------------
-            # Unknown symptoms
-            # ------------------------------------------------
-
+            elif self.use_real_llm:
+                # ------------------------------------------------
+                # AI-assisted reasoning for non-critical cases
+                # ------------------------------------------------
+                system_prompt = (
+                    "You are a medical triage AI. Analyze the patient's symptoms, age, gender, and history. "
+                    "Return a JSON object with strictly these keys: "
+                    "'disease' (string, possible condition), "
+                    "'confidence' (number 0-100), "
+                    "'action' (string, recommended next steps), "
+                    "'triage' (string, one of: LOW, MODERATE, HIGH). "
+                    "Do not include any other text."
+                )
+                user_prompt = (
+                    f"Symptoms: {symptoms}\n"
+                    f"Age: {age}\n"
+                    f"Gender: {gender}\n"
+                    f"History: {history or 'None'}"
+                )
+                try:
+                    response = await self.client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                        temperature=0.3,
+                        response_format={ "type": "json_object" }
+                    )
+                    content = response.choices[0].message.content
+                    if not content:
+                        raise ValueError("Empty response from AI")
+                    result_data = json.loads(content)
+                    
+                    result = {
+                        "disease": str(result_data.get("disease", "Unknown")),
+                        "confidence": float(result_data.get("confidence", 50.0)),
+                        "action": str(result_data.get("action", "Consult a doctor.")),
+                        "triage": str(result_data.get("triage", "MODERATE")).upper()
+                    }
+                except Exception as e:
+                    logger.error(f"AI Prediction failed, falling back to rules: {e}")
+                    # Fallback to rules if AI fails
+                    result = self._rule_based_fallback(symptoms_lower)
             else:
-                result = {
-                    "disease": "Unknown / General Symptoms",
-                    "confidence": 50.0,
-                    "action": (
-                        "Schedule a general medical consultation "
-                        "for further evaluation."
-                    ),
-                    "triage": "MODERATE",
-                }
+                # ------------------------------------------------
+                # Rule-based fallback if no AI
+                # ------------------------------------------------
+                result = self._rule_based_fallback(symptoms_lower)
 
             # ------------------------------------------------
             # Metrics
             # ------------------------------------------------
-
             latency = (
                 datetime.now(timezone.utc) - start_time
             ).total_seconds()
@@ -211,17 +250,35 @@ class MedicalAIService:
 
         except ValueError:
             raise
-
         except Exception as exc:
-            logger.exception(
-                "AI Service Error: {}",
-                exc,
-            )
-
+            logger.exception("AI Service Error: {}", exc)
             raise HTTPException(
                 status_code=500,
                 detail="AI Service temporarily unavailable.",
             ) from exc
+
+    def _rule_based_fallback(self, symptoms_lower: str) -> dict[str, Any]:
+        if "fever" in symptoms_lower and "cough" in symptoms_lower:
+            return {
+                "disease": "Possible Viral Respiratory Infection",
+                "confidence": 82.0,
+                "action": "Rest and maintain hydration. Consult a healthcare professional if symptoms persist or worsen.",
+                "triage": "LOW",
+            }
+        elif "headache" in symptoms_lower:
+            return {
+                "disease": "Possible Headache / Migraine",
+                "confidence": 70.0,
+                "action": "Monitor symptoms and consider medical consultation if severe, persistent, or associated with other concerning symptoms.",
+                "triage": "MODERATE",
+            }
+        else:
+            return {
+                "disease": "Unknown / General Symptoms",
+                "confidence": 50.0,
+                "action": "Schedule a general medical consultation for further evaluation.",
+                "triage": "MODERATE",
+            }
 
 
 def get_ai_service() -> MedicalAIService:
@@ -253,7 +310,7 @@ async def get_disease_prediction(
     the actual Patient profile ID.
     """
 
-    prediction_result = ai_service.analyze_symptoms(
+    prediction_result = await ai_service.analyze_symptoms(
         symptoms=request.symptoms,
         age=request.age,
         gender=request.gender,
@@ -399,3 +456,29 @@ async def analyze_medical_report(
             "analysis": mock_findings,
         },
     )
+
+
+# ============================================================
+# AI Chat
+# ============================================================
+
+@router.post(
+    "/chat",
+    response_model=SuccessResponse,
+    summary="Chat with AI Assistant",
+)
+async def chat_with_ai(
+    request: AIChatRequest,
+    current_user: User = Depends(get_current_user),
+    ai_service: MedicalAIService = Depends(get_ai_service),
+) -> Any:
+    """
+    Chat with the Aegis AI healthcare assistant.
+    """
+    reply = await ai_service.chat(request.message)
+    return SuccessResponse(
+        message="Chat response generated",
+        data={
+            "reply": reply
+        }
+    )

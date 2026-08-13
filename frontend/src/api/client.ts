@@ -434,6 +434,25 @@ export const notificationsAPI = {
 };
 
 /* ============================================================
+   AI API
+   ============================================================ */
+
+export const aiAPI = {
+  chat: (data: { message: string }) =>
+    api.post('/ai/chat', data),
+
+  predict: (data: Record<string, unknown>) =>
+    api.post('/ai/predict', data),
+
+  analyzeReport: (formData: FormData) =>
+    api.post('/ai/analyze-report', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+};
+
+/* ============================================================
    EXPORT
    ============================================================ */
 

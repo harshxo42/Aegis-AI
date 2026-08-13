@@ -215,7 +215,7 @@ export default function EmergencySOSPage() {
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="E.g., Second floor apartment, gate code 1234, patient is unconscious..."
-                      className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--danger-500)] resize-none h-24"
+                      className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--danger-500)] resize-y min-h-[6rem] max-h-64"
                       style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                     />
                   </div>

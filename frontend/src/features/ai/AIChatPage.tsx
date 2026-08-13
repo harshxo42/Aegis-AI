@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Bot, Send, User, AlertTriangle, Loader2 } from 'lucide-react';
 import { useAppSelector } from '@/store';
+import { aiAPI } from '@/api/client';
 
 interface Message {
   id: string;
@@ -54,22 +55,13 @@ export default function AIChatPage() {
     setInput('');
     setIsTyping(true);
 
-    // Mock AI Response generation
-    setTimeout(() => {
-      let aiContent = "I'm sorry, I'm currently operating in mock mode, but I'm designed to help you with medical and platform queries.";
-      let isEmergency = false;
-      const lowerInput = userMsg.content.toLowerCase();
+    try {
+      const response = await aiAPI.chat({ message: input.trim() });
+      const aiContent = response.data?.data?.reply || "I didn't receive a valid response.";
       
-      if (lowerInput.includes('chest pain') || lowerInput.includes('heart attack')) {
-        aiContent = "Based on your symptoms, this could be a life-threatening emergency (e.g., Cardiac Arrest). Please use the Emergency SOS button immediately to dispatch an ambulance!";
-        isEmergency = true;
-      } else if (lowerInput.includes('fever') || lowerInput.includes('headache')) {
-        aiContent = "A fever or headache can have many causes. It's usually best to stay hydrated, rest, and monitor your temperature. If it persists for more than 3 days, please schedule an appointment with a doctor.";
-      } else if (lowerInput.includes('ambulance') || lowerInput.includes('track')) {
-        aiContent = "You can track your dispatched ambulance in real-time from the 'Emergencies' tab in your dashboard.";
-      } else if (lowerInput.includes('report') || lowerInput.includes('ocr')) {
-        aiContent = "You can upload your medical reports on the 'Medical Reports' page. I will analyze them and extract key metrics for you automatically.";
-      }
+      const isEmergency = aiContent.toLowerCase().includes('emergency') || 
+                          aiContent.toLowerCase().includes('critical') || 
+                          aiContent.toLowerCase().includes('immediate');
 
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -80,8 +72,18 @@ export default function AIChatPage() {
       };
 
       setMessages(prev => [...prev, aiMsg]);
+    } catch (error) {
+      console.error('Failed to get AI response:', error);
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "I'm sorry, I'm having trouble connecting to my servers right now. Please try again later.",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   return (
