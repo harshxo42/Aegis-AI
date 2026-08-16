@@ -155,79 +155,34 @@ useState<LocationStatus>('idle');
 // Auto Detect Location
 // -------------------------------
 
-useEffect(()=>{
+useEffect(() => {
+  if (!navigator.geolocation) {
+    setLocationStatus('error');
+    return;
+  }
 
+  setLocationStatus('fetching');
 
-if(!navigator.geolocation){
-
-setLocationStatus('error');
-
-toast.error(
-'Location not supported'
-);
-
-return;
-
-}
-
-
-
-setLocationStatus('fetching');
-
-
-
-navigator.geolocation.getCurrentPosition(
-
-(position)=>{
-
-
-setFormData(prev=>({
-
-...prev,
-
-
-location_lat:
-position.coords.latitude,
-
-
-location_lng:
-position.coords.longitude
-
-
-}));
-
-
-setLocationStatus('success');
-
-
-},
-
-
-()=>{
-
-
-setLocationStatus('error');
-
-
-toast.error(
-'Please select location manually'
-);
-
-
-},
-
-
-{
-enableHighAccuracy:true,
-timeout:10000,
-maximumAge:0
-}
-
-
-);
-
-
-},[]);
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      setFormData((prev) => ({
+        ...prev,
+        location_lat: position.coords.latitude,
+        location_lng: position.coords.longitude,
+      }));
+      setLocationStatus('success');
+    },
+    (err) => {
+      console.warn('[Aegis AI] Geolocation access unavailable/denied:', err);
+      setLocationStatus('error');
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    }
+  );
+}, []);
 
 
 
@@ -788,119 +743,61 @@ setLoading(false);
         {/* LOCATION */}
 
 
+        {/* LOCATION */}
         <div>
-
-
-        <label className="flex justify-between text-sm text-gray-300 mb-3">
-
-
-        <span className="flex items-center gap-2">
-
-        <MapPin size={16}/>
-
-        Emergency Location
-
-        </span>
-
-
-
-        <span className="text-xs text-gray-500">
-
-
-        {
-        locationStatus==="fetching"
-
-        ?
-
-        "Detecting..."
-
-        :
-
-        locationStatus==="success"
-
-        ?
-
-        "Location Ready"
-
-        :
-
-        "Select manually"
-
-        }
-
-
-        </span>
-
-
-        </label>
-
-
-
-
-
-        <div className="border border-[var(--border-color)] rounded-xl overflow-hidden">
-
-
-        <Map
-
-
-        center={[
-        formData.location_lat,
-        formData.location_lng
-        ]}
-
-
-        zoom={14}
-
-
-        height="320px"
-
-
-        onLocationSelect={
-        handleLocationSelect
-        }
-
-
-        >
-
-
-
-        <Marker
-
-
-        position={[
-
-        formData.location_lat,
-
-        formData.location_lng
-
-        ]}
-
-
-        icon={userLocationIcon}
-
-
-        >
-
-
-        <Popup>
-
-        Emergency Location
-
-        </Popup>
-
-
-        </Marker>
-
-
-
-        </Map>
-
-
-
-        </div>
-
-
+          <label className="flex justify-between items-center text-sm text-gray-300 mb-2">
+            <span className="flex items-center gap-2 font-medium">
+              <MapPin size={16} className="text-rose-400" />
+              Emergency Location
+            </span>
+
+            <span className="text-xs text-gray-400">
+              {locationStatus === "fetching"
+                ? "Detecting..."
+                : locationStatus === "success"
+                ? "Location Ready"
+                : "Manual Selection"}
+            </span>
+          </label>
+
+          {locationStatus === "error" && (
+            <div
+              className="mb-3 p-3 rounded-lg flex items-start gap-2.5 text-xs"
+              style={{
+                background: "rgba(245, 158, 11, 0.08)",
+                border: "1px solid rgba(245, 158, 11, 0.25)",
+                color: "var(--warning-400)",
+              }}
+            >
+              <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" />
+              <span>
+                Location access is unavailable. Default coordinates (New Delhi: 28.6139, 77.2090) are selected. You can click on the map to choose your exact location manually.
+              </span>
+            </div>
+          )}
+
+          <div className="border border-[var(--border-color)] rounded-xl overflow-hidden shadow-md">
+            <Map
+              center={[formData.location_lat, formData.location_lng]}
+              zoom={14}
+              height="320px"
+              onLocationSelect={handleLocationSelect}
+            >
+              <Marker
+                position={[formData.location_lat, formData.location_lng]}
+                icon={userLocationIcon}
+              >
+                <Popup>Emergency Location ({formData.location_lat.toFixed(4)}, {formData.location_lng.toFixed(4)})</Popup>
+              </Marker>
+            </Map>
+          </div>
+
+          <div className="flex items-center justify-between mt-2 text-[11px] text-gray-500">
+            <span>
+              Coordinates: {formData.location_lat.toFixed(4)}, {formData.location_lng.toFixed(4)}
+            </span>
+            <span>Click map to reposition pin</span>
+          </div>
         </div>
 
 

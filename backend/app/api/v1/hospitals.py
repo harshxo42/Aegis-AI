@@ -38,6 +38,11 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 
 
 @router.get(
+    "",
+    summary="List and search hospitals",
+    include_in_schema=False,
+)
+@router.get(
     "/",
     summary="List and search hospitals",
 )

@@ -239,12 +239,12 @@ export default function HospitalsPage() {
             setError(String(backendMessage));
           } else {
             setError(
-              'Unable to load hospitals. Please check the backend and try again.'
+              'Unable to load hospitals. Please try again.'
             );
           }
         } else {
           setError(
-            'Unable to load hospitals. Please check your connection and try again.'
+            'Unable to load hospitals. Please try again.'
           );
         }
       } finally {
@@ -778,7 +778,7 @@ export default function HospitalsPage() {
             </div>
 
             <p className="text-lg font-semibold text-white">
-              No hospitals found
+              {hasFilters ? 'No matching hospitals found' : 'No hospitals are currently available.'}
             </p>
 
             <p
@@ -790,7 +790,7 @@ export default function HospitalsPage() {
             >
               {hasFilters
                 ? 'Try changing your search or filters to find available hospitals.'
-                : 'There are currently no hospitals available from the backend.'}
+                : 'There are currently no active hospital records in the system.'}
             </p>
 
             {hasFilters && (

@@ -945,3 +945,40 @@ async def test_update_bed_availability_partial_payload(db_session):
     assert response.data["available_beds"] == 5
     assert response.data["icu_available"] == hospital.icu_available
     assert response.data["ventilators_available"] == hospital.ventilators_available
+
+
+@pytest.mark.asyncio
+async def test_list_hospitals_response_schema(db_session):
+    """Verify list_hospitals returns PaginatedResponse with proper schema."""
+    hospital = await create_test_hospital(db_session)
+
+    response = await list_hospitals(
+        page=1,
+        per_page=20,
+        search=None,
+        city=None,
+        state=None,
+        hospital_type=None,
+        has_emergency=None,
+        has_beds=None,
+        lat=None,
+        lng=None,
+        radius_km=50.0,
+        db=db_session,
+    )
+
+    assert response.success is True
+    assert response.message == "Data retrieved successfully"
+    assert len(response.data) >= 1
+    assert response.pagination.page == 1
+    assert response.pagination.total >= 1
+
+    first = response.data[0]
+    assert "id" in first
+    assert "name" in first
+    assert "city" in first
+    assert "hospital_type" in first
+    assert "available_beds" in first
+    assert "icu_available" in first
+    assert "has_emergency" in first
+    assert "rating" in first

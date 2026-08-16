@@ -8,6 +8,7 @@ import {
 
 import { store } from '@/store';
 import App from './App';
+import 'leaflet/dist/leaflet.css';
 import './index.css';
 
 const queryClient = new QueryClient({
