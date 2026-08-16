@@ -13,7 +13,7 @@ interface UiState {
 }
 
 const initialState: UiState = {
-  sidebarOpen: true,
+  sidebarOpen: false,
   sidebarCollapsed: false,
   theme: 'dark',
 };

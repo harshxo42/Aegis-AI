@@ -536,25 +536,20 @@ textarea::placeholder {
    ============================================================ */
 
 .mobile-sidebar-overlay {
-  display: none;
-
   position: fixed;
   inset: 0;
 
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
 
   padding: 0;
   margin: 0;
 
   border: none;
 
-  background: rgba(0, 0, 0, 0.58);
+  background: rgba(0, 0, 0, 0.65);
 
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-
-  z-index: 90;
+  z-index: 140;
 
   cursor: pointer;
 }
@@ -591,7 +586,7 @@ textarea::placeholder {
 }
 
 /* ============================================================
-   DESKTOP
+   DESKTOP (>= 1024px)
    ============================================================ */
 
 @media (min-width: 1024px) {
@@ -606,25 +601,75 @@ textarea::placeholder {
 
   .mobile-sidebar-overlay {
     display: none !important;
+    pointer-events: none !important;
+  }
+
+  .navbar-mobile-toggle {
+    display: none !important;
   }
 }
 
 /* ============================================================
-   TABLET
+   TABLET & MOBILE (< 1024px)
    ============================================================ */
 
 @media (max-width: 1023px) {
   :root {
-    --sidebar-width: 250px;
+    --navbar-height: 68px;
+    --sidebar-width: 280px;
+  }
+
+  .app-shell > aside,
+  .app-shell .sidebar,
+  .app-shell .aegis-sidebar {
+    width: var(--sidebar-width);
+    transform: translateX(-100%);
+    z-index: 150;
+    transition: transform var(--transition-normal);
+  }
+
+  .app-shell.sidebar-open > aside,
+  .app-shell.sidebar-open .sidebar,
+  .app-shell.sidebar-open .aegis-sidebar,
+  .aegis-sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .app-shell > header,
+  .app-shell .navbar,
+  .app-shell .aegis-navbar {
+    left: 0 !important;
+    width: 100% !important;
+    height: var(--navbar-height);
+  }
+
+  .navbar-mobile-toggle {
+    display: flex !important;
+  }
+
+  .app-main {
+    width: 100% !important;
+    margin-left: 0 !important;
+    padding-top: var(--navbar-height);
   }
 
   .app-content {
-    padding: 24px;
+    min-height: calc(100vh - var(--navbar-height));
+    padding: 20px 20px 32px;
+  }
+
+  .app-content-inner {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .page-title {
+    font-size: 24px;
   }
 }
 
 /* ============================================================
-   MOBILE
+   MOBILE (< 768px)
    ============================================================ */
 
 @media (max-width: 767px) {
@@ -633,46 +678,8 @@ textarea::placeholder {
     --sidebar-width: 280px;
   }
 
-  .app-shell > aside,
-  .app-shell .sidebar {
-    width: var(--sidebar-width);
-    transform: translateX(-100%);
-    z-index: 120;
-  }
-
-  .app-shell.sidebar-open > aside,
-  .app-shell.sidebar-open .sidebar {
-    transform: translateX(0);
-  }
-
-  .app-shell > header,
-  .app-shell .navbar {
-    left: 0;
-    width: 100%;
-    height: var(--navbar-height);
-  }
-
-  .app-main {
-    width: 100%;
-    margin-left: 0;
-    padding-top: var(--navbar-height);
-  }
-
   .app-content {
-    min-height: calc(100vh - var(--navbar-height));
-    padding: 20px 16px 32px;
-  }
-
-  .app-content-inner {
-    width: 100%;
-  }
-
-  .mobile-sidebar-overlay {
-    display: block;
-  }
-
-  .page-title {
-    font-size: 24px;
+    padding: 16px 14px 28px;
   }
 }
 
@@ -2504,40 +2511,23 @@ textarea::placeholder {
 }
 
 /* ============================================================
-   MOBILE
+   RESPONSIVE NAVBAR & SIDEBAR (< 1024px)
    ============================================================ */
 
-.mobile-sidebar-overlay {
-  position: fixed;
-
-  inset: 0;
-
-  z-index: 140;
-
-  border: none;
-
-  background: rgba(0, 0, 0, 0.55);
-
-  backdrop-filter: blur(2px);
-}
-
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .aegis-navbar {
-    left: 0;
-
-    width: 100%;
-
+    left: 0 !important;
+    width: 100% !important;
     padding: 0 16px;
   }
 
   .navbar-mobile-toggle {
-    display: flex;
+    display: flex !important;
   }
 
   .aegis-search {
     width: 100%;
-
-    max-width: none;
+    max-width: 320px;
   }
 
   .aegis-navbar-left {
@@ -2548,16 +2538,9 @@ textarea::placeholder {
     margin-left: 10px;
   }
 
-  .aegis-user-info {
-    display: none;
-  }
-
-  .aegis-user-button {
-    padding-right: 0;
-  }
-
   .aegis-sidebar {
     transform: translateX(-100%);
+    z-index: 150;
   }
 
   .aegis-sidebar.sidebar-open {
@@ -2565,11 +2548,23 @@ textarea::placeholder {
   }
 
   .app-main {
-    width: 100%;
-
-    margin-left: 0;
-
+    width: 100% !important;
+    margin-left: 0 !important;
     padding-top: var(--navbar-height);
+  }
+}
+
+@media (max-width: 767px) {
+  .aegis-search {
+    max-width: none;
+  }
+
+  .aegis-user-info {
+    display: none;
+  }
+
+  .aegis-user-button {
+    padding-right: 0;
   }
 }
 

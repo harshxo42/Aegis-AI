@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 
 import { useAppSelector, useAppDispatch } from '@/store';
-import { toggleSidebarCollapse } from '@/store/uiSlice';
+import { toggleSidebarCollapse, setSidebarOpen } from '@/store/uiSlice';
 
 import type { ReactNode } from 'react';
 import type { UserRole } from '@/types';
@@ -270,6 +270,11 @@ export default function Sidebar() {
             <li key={item.path}>
               <NavLink
                 to={item.path}
+                onClick={() => {
+                  if (window.innerWidth < 1024) {
+                    dispatch(setSidebarOpen(false));
+                  }
+                }}
                 title={
                   sidebarCollapsed
                     ? item.label
