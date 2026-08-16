@@ -1,12 +1,14 @@
 /**
- * Aegis AI – Axios API Client
+ * Aegis AI – Centralized Axios API Client
  *
- * Centralized API client with:
+ * Features:
+ * - Centralized API configuration
  * - JWT authentication
  * - Automatic access-token refresh
- * - Failed-request queue during refresh
- * - Centralized error handling
- * - All backend API service functions
+ * - Failed-request queue
+ * - Centralized 401 handling
+ * - Consistent API services
+ * - Safe request retry
  */
 
 import axios, {
@@ -15,58 +17,85 @@ import axios, {
 } from 'axios';
 
 import { store } from '@/store';
-import { logout, setTokens } from '@/store/authSlice';
+import {
+  logout,
+  setTokens,
+} from '@/store/authSlice';
 
 /* ============================================================
-   API CONFIGURATION
+   CONFIGURATION
    ============================================================ */
 
-const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/v1`;
+const API_URL = import.meta.env.VITE_API_URL?.trim();
+
+const API_BASE_URL = API_URL
+  ? `${API_URL.replace(/\/+$/, '')}/api/v1`
+  : '/api/v1';
+
+if (import.meta.env.DEV && !API_URL) {
+  console.warn(
+    '[Aegis AI] VITE_API_URL is not configured. Falling back to /api/v1.'
+  );
+}
+
+/* ============================================================
+   AXIOS INSTANCE
+   ============================================================ */
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json',
     Accept: 'application/json',
+    'Content-Type': 'application/json',
   },
 });
 
 /* ============================================================
-   REQUEST TYPES
+   TYPES
    ============================================================ */
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
 };
 
+type QueueItem = {
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+};
+
 /* ============================================================
-   TOKEN REFRESH QUEUE
+   REFRESH STATE
    ============================================================ */
 
 let isRefreshing = false;
 
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: unknown) => void;
-}> = [];
+let failedQueue: QueueItem[] = [];
 
-const processQueue = (
+/* ============================================================
+   PROCESS FAILED REQUEST QUEUE
+   ============================================================ */
+
+function processQueue(
   error: unknown,
-  token: string | null = null
-): void => {
+  token: string | null
+): void {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
       reject(error);
     } else if (token) {
       resolve(token);
     } else {
-      reject(new Error('Token refresh failed'));
+      reject(
+        new Error(
+          'Authentication refresh failed.'
+        )
+      );
     }
   });
 
   failedQueue = [];
-};
+}
 
 /* ============================================================
    REQUEST INTERCEPTOR
@@ -75,14 +104,17 @@ const processQueue = (
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const state = store.getState();
+
     const accessToken = state.auth.accessToken;
 
     if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+      config.headers.Authorization =
+        `Bearer ${accessToken}`;
     }
 
     return config;
   },
+
   (error) => Promise.reject(error)
 );
 
@@ -95,24 +127,39 @@ api.interceptors.response.use(
 
   async (error: AxiosError) => {
     const originalRequest =
-      error.config as RetryableRequestConfig | undefined;
+      error.config as
+        | RetryableRequestConfig
+        | undefined;
 
-    /*
-     * If there is no request config, simply reject.
-     */
     if (!originalRequest) {
       return Promise.reject(error);
     }
 
     /*
-     * Only handle 401 Unauthorized.
+     * Only handle 401 errors.
      */
     if (error.response?.status !== 401) {
       return Promise.reject(error);
     }
 
     /*
-     * Prevent infinite retry loops.
+     * Never refresh authentication endpoints.
+     */
+    const requestUrl =
+      originalRequest.url ?? '';
+
+    const isAuthEndpoint =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/refresh');
+
+    if (isAuthEndpoint) {
+      store.dispatch(logout());
+      return Promise.reject(error);
+    }
+
+    /*
+     * Prevent infinite retry loop.
      */
     if (originalRequest._retry) {
       store.dispatch(logout());
@@ -120,79 +167,120 @@ api.interceptors.response.use(
     }
 
     /*
-     * If another request is already refreshing the token,
-     * wait until that refresh finishes.
+     * If another request is already refreshing,
+     * wait for the new access token.
      */
     if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
-        failedQueue.push({
-          resolve,
-          reject,
-        });
-      })
-        .then((newAccessToken) => {
-          originalRequest.headers.Authorization =
-            `Bearer ${newAccessToken}`;
+      return new Promise<string>(
+        (resolve, reject) => {
+          failedQueue.push({
+            resolve,
+            reject,
+          });
+        }
+      ).then((newAccessToken) => {
+        originalRequest.headers.Authorization =
+          `Bearer ${newAccessToken}`;
 
-          return api(originalRequest);
-        })
-        .catch((queueError) => {
-          return Promise.reject(queueError);
-        });
+        return api(originalRequest);
+      });
     }
 
+    /*
+     * This request owns the refresh operation.
+     */
     originalRequest._retry = true;
     isRefreshing = true;
 
     const state = store.getState();
-    const refreshToken = state.auth.refreshToken;
+
+    const refreshToken =
+      state.auth.refreshToken;
 
     /*
-     * No refresh token means the session cannot be recovered.
+     * No refresh token available.
      */
     if (!refreshToken) {
+      const refreshError = new Error(
+        'No refresh token available.'
+      );
+
       isRefreshing = false;
+
+      processQueue(
+        refreshError,
+        null
+      );
+
       store.dispatch(logout());
 
-      return Promise.reject(error);
+      return Promise.reject(refreshError);
     }
 
     try {
       /*
-       * Use plain axios here instead of `api` so the refresh
-       * request does not trigger the same interceptor again.
+       * IMPORTANT:
+       * Use standalone axios here.
+       *
+       * Do NOT use `api.post()`
+       * because that could trigger another
+       * authentication refresh loop.
        */
-      const refreshResponse = await axios.post(
-        `${API_BASE_URL}/auth/refresh`,
-        {
-          refresh_token: refreshToken,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
+      const refreshResponse =
+        await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          {
+            refresh_token: refreshToken,
           },
-          timeout: 30000,
-        }
-      );
-
-      const responseData = refreshResponse.data?.data;
-
-      const newAccessToken = responseData?.access_token;
-      const newRefreshToken =
-        responseData?.refresh_token ?? refreshToken;
+          {
+            headers: {
+              Accept: 'application/json',
+              'Content-Type':
+                'application/json',
+            },
+            timeout: 30000,
+          }
+        );
 
       /*
-       * Validate refresh response.
+       * Support both:
+       *
+       * {
+       *   data: {
+       *     access_token,
+       *     refresh_token
+       *   }
+       * }
+       *
+       * and:
+       *
+       * {
+       *   access_token,
+       *   refresh_token
+       * }
        */
+      const responseBody =
+        refreshResponse.data;
+
+      const responseData =
+        responseBody?.data ??
+        responseBody;
+
+      const newAccessToken =
+        responseData?.access_token;
+
+      const newRefreshToken =
+        responseData?.refresh_token ??
+        refreshToken;
+
       if (!newAccessToken) {
         throw new Error(
-          'Refresh endpoint did not return an access token'
+          'Refresh endpoint did not return access_token.'
         );
       }
 
       /*
-       * Save new tokens in Redux.
+       * Save tokens.
        */
       store.dispatch(
         setTokens({
@@ -202,12 +290,15 @@ api.interceptors.response.use(
       );
 
       /*
-       * Release all requests waiting for the refresh.
+       * Resolve all queued requests.
        */
-      processQueue(null, newAccessToken);
+      processQueue(
+        null,
+        newAccessToken
+      );
 
       /*
-       * Retry original request with the new token.
+       * Retry original request.
        */
       originalRequest.headers.Authorization =
         `Bearer ${newAccessToken}`;
@@ -215,16 +306,18 @@ api.interceptors.response.use(
       return api(originalRequest);
     } catch (refreshError) {
       /*
-       * Reject every request waiting in the queue.
+       * Refresh failed.
        */
-      processQueue(refreshError, null);
+      processQueue(
+        refreshError,
+        null
+      );
 
-      /*
-       * Refresh failed → session is no longer valid.
-       */
       store.dispatch(logout());
 
-      return Promise.reject(refreshError);
+      return Promise.reject(
+        refreshError
+      );
     } finally {
       isRefreshing = false;
     }
@@ -239,10 +332,19 @@ export const authAPI = {
   login: (data: {
     email: string;
     password: string;
-  }) => api.post('/auth/login', data),
+  }) =>
+    api.post(
+      '/auth/login',
+      data
+    ),
 
-  register: (data: Record<string, unknown>) =>
-    api.post('/auth/register', data),
+  register: (
+    data: Record<string, unknown>
+  ) =>
+    api.post(
+      '/auth/register',
+      data
+    ),
 
   getMe: () =>
     api.get('/auth/me'),
@@ -250,12 +352,20 @@ export const authAPI = {
   changePassword: (
     data: Record<string, string>
   ) =>
-    api.put('/auth/change-password', data),
+    api.put(
+      '/auth/change-password',
+      data
+    ),
 
-  refresh: (refreshToken: string) =>
-    api.post('/auth/refresh', {
-      refresh_token: refreshToken,
-    }),
+  refresh: (
+    refreshToken: string
+  ) =>
+    api.post(
+      '/auth/refresh',
+      {
+        refresh_token: refreshToken,
+      }
+    ),
 };
 
 /* ============================================================
@@ -263,22 +373,42 @@ export const authAPI = {
    ============================================================ */
 
 export const usersAPI = {
-  list: (params?: Record<string, unknown>) =>
-    api.get('/users', { params }),
+  list: (
+    params?: Record<string, unknown>
+  ) =>
+    api.get(
+      '/users',
+      {
+        params,
+      }
+    ),
 
-  getById: (id: string) =>
-    api.get(`/users/${id}`),
+  getById: (
+    id: string
+  ) =>
+    api.get(
+      `/users/${id}`
+    ),
 
   updateProfile: (
     data: Record<string, unknown>
   ) =>
-    api.put('/users/me', data),
+    api.put(
+      '/users/me',
+      data
+    ),
 
   getStats: () =>
-    api.get('/users/stats'),
+    api.get(
+      '/users/stats'
+    ),
 
-  toggleActive: (id: string) =>
-    api.put(`/users/${id}/toggle-active`),
+  toggleActive: (
+    id: string
+  ) =>
+    api.put(
+      `/users/${id}/toggle-active`
+    ),
 };
 
 /* ============================================================
@@ -287,18 +417,34 @@ export const usersAPI = {
 
 export const patientsAPI = {
   getMyProfile: () =>
-    api.get('/patients/me'),
+    api.get(
+      '/patients/me'
+    ),
 
   updateMyProfile: (
     data: Record<string, unknown>
   ) =>
-    api.put('/patients/me', data),
+    api.put(
+      '/patients/me',
+      data
+    ),
 
-  list: (params?: Record<string, unknown>) =>
-    api.get('/patients', { params }),
+  list: (
+    params?: Record<string, unknown>
+  ) =>
+    api.get(
+      '/patients',
+      {
+        params,
+      }
+    ),
 
-  getById: (id: string) =>
-    api.get(`/patients/${id}`),
+  getById: (
+    id: string
+  ) =>
+    api.get(
+      `/patients/${id}`
+    ),
 };
 
 /* ============================================================
@@ -306,31 +452,55 @@ export const patientsAPI = {
    ============================================================ */
 
 export const hospitalsAPI = {
-  list: (params?: Record<string, unknown>) =>
-    api.get('/hospitals', { params }),
+  list: (
+    params?: Record<string, unknown>
+  ) =>
+    api.get(
+      '/hospitals',
+      {
+        params,
+      }
+    ),
 
-  getById: (id: string) =>
-    api.get(`/hospitals/${id}`),
+  getById: (
+    id: string
+  ) =>
+    api.get(
+      `/hospitals/${id}`
+    ),
 
   create: (
     data: Record<string, unknown>
   ) =>
-    api.post('/hospitals', data),
+    api.post(
+      '/hospitals',
+      data
+    ),
 
   update: (
     id: string,
     data: Record<string, unknown>
   ) =>
-    api.put(`/hospitals/${id}`, data),
+    api.put(
+      `/hospitals/${id}`,
+      data
+    ),
 
   updateBeds: (
     id: string,
     data: Record<string, unknown>
   ) =>
-    api.put(`/hospitals/${id}/beds`, data),
+    api.put(
+      `/hospitals/${id}/beds`,
+      data
+    ),
 
-  delete: (id: string) =>
-    api.delete(`/hospitals/${id}`),
+  delete: (
+    id: string
+  ) =>
+    api.delete(
+      `/hospitals/${id}`
+    ),
 };
 
 /* ============================================================
@@ -339,72 +509,85 @@ export const hospitalsAPI = {
 
 export const emergenciesAPI = {
   /*
-   * Create SOS / emergency request.
-   *
-   * POST /api/v1/emergencies/
+   * Create emergency / SOS
+   * POST /api/v1/emergencies
    */
   create: (
     data: Record<string, unknown>
   ) =>
-    api.post('/emergencies/', data),
+    api.post(
+      '/emergencies',
+      data
+    ),
 
   /*
-   * List emergencies.
-   *
-   * GET /api/v1/emergencies/
+   * List emergencies
+   * GET /api/v1/emergencies
    */
   list: (
     params?: Record<string, unknown>
   ) =>
-    api.get('/emergencies/', { params }),
+    api.get(
+      '/emergencies',
+      {
+        params,
+      }
+    ),
 
   /*
-   * Get currently active emergencies.
-   *
+   * Active emergencies
    * GET /api/v1/emergencies/active
    */
   getActive: () =>
-    api.get('/emergencies/active'),
+    api.get(
+      '/emergencies/active'
+    ),
 
   /*
-   * Get one emergency.
-   *
-   * GET /api/v1/emergencies/{id}
+   * Single emergency
+   * GET /api/v1/emergencies/:id
    */
-  getById: (id: string) =>
-    api.get(`/emergencies/${id}`),
+  getById: (
+    id: string
+  ) =>
+    api.get(
+      `/emergencies/${id}`
+    ),
 
   /*
-   * Update emergency.
-   *
-   * PUT /api/v1/emergencies/{id}
+   * Update emergency
+   * PUT /api/v1/emergencies/:id
    */
   update: (
     id: string,
     data: Record<string, unknown>
   ) =>
-    api.put(`/emergencies/${id}`, data),
+    api.put(
+      `/emergencies/${id}`,
+      data
+    ),
 
   /*
-   * Update emergency status.
-   *
-   * NOTE:
-   * Keep this only if the backend actually exposes
-   * /emergencies/{id}/status.
+   * Update emergency status
    */
   updateStatus: (
     id: string,
     data: Record<string, unknown>
   ) =>
-    api.put(`/emergencies/${id}/status`, data),
+    api.put(
+      `/emergencies/${id}/status`,
+      data
+    ),
 
   /*
-   * Cancel emergency.
-   *
-   * PUT /api/v1/emergencies/{id}/cancel
+   * Cancel emergency
    */
-  cancel: (id: string) =>
-    api.put(`/emergencies/${id}/cancel`),
+  cancel: (
+    id: string
+  ) =>
+    api.put(
+      `/emergencies/${id}/cancel`
+    ),
 };
 
 /* ============================================================
@@ -413,12 +596,21 @@ export const emergenciesAPI = {
 
 export const analyticsAPI = {
   getDashboard: () =>
-    api.get('/analytics/dashboard'),
+    api.get(
+      '/analytics/dashboard'
+    ),
 
-  getEmergencyTrends: (days?: number) =>
-    api.get('/analytics/emergency-trends', {
-      params: { days },
-    }),
+  getEmergencyTrends: (
+    days = 7
+  ) =>
+    api.get(
+      '/analytics/emergency-trends',
+      {
+        params: {
+          days,
+        },
+      }
+    ),
 };
 
 /* ============================================================
@@ -427,10 +619,16 @@ export const analyticsAPI = {
 
 export const notificationsAPI = {
   list: () =>
-    api.get('/notifications'),
+    api.get(
+      '/notifications'
+    ),
 
-  markRead: (id: string) =>
-    api.put(`/notifications/${id}/read`),
+  markRead: (
+    id: string
+  ) =>
+    api.put(
+      `/notifications/${id}/read`
+    ),
 };
 
 /* ============================================================
@@ -438,19 +636,85 @@ export const notificationsAPI = {
    ============================================================ */
 
 export const aiAPI = {
-  chat: (data: { message: string }) =>
-    api.post('/ai/chat', data),
+  chat: (
+    data: {
+      message: string;
+    }
+  ) =>
+    api.post(
+      '/ai/chat',
+      data
+    ),
 
-  predict: (data: Record<string, unknown>) =>
-    api.post('/ai/predict', data),
+  predict: (
+    data: Record<string, unknown>
+  ) =>
+    api.post(
+      '/ai/predict',
+      data
+    ),
 
-  analyzeReport: (formData: FormData) =>
-    api.post('/ai/analyze-report', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }),
+  analyzeReport: (
+    formData: FormData
+  ) =>
+    api.post(
+      '/ai/analyze-report',
+      formData,
+      {
+        headers: {
+          'Content-Type':
+            'multipart/form-data',
+        },
+      }
+    ),
 };
+
+/* ============================================================
+   GENERIC API ERROR HELPER
+   ============================================================ */
+
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = 'Something went wrong. Please try again.'
+): string {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+
+    if (
+      typeof data?.message ===
+      'string'
+    ) {
+      return data.message;
+    }
+
+    if (
+      typeof data?.detail ===
+      'string'
+    ) {
+      return data.detail;
+    }
+
+    if (
+      typeof data?.error ===
+      'string'
+    ) {
+      return data.error;
+    }
+
+    if (error.message) {
+      return error.message;
+    }
+  }
+
+  if (
+    error instanceof Error &&
+    error.message
+  ) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 /* ============================================================
    EXPORT

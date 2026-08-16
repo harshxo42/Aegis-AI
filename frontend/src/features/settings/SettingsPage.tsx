@@ -90,7 +90,7 @@ export default function SettingsPage() {
                     {formData.fullName.charAt(0) || 'U'}
                   </div>
                   <div>
-                    <button type="button" className="px-4 py-2 rounded-lg bg-[var(--primary-500)]/10 text-[var(--primary-400)] font-medium text-sm hover:bg-[var(--primary-500)]/20 transition-colors">
+                    <button type="button" className="px-4 py-2 rounded-lg bg-[var(--primary-500)]/10 text-[var(--primary-400)] font-medium text-sm hover:bg-[var(--primary-500)]/20 transition-colors whitespace-nowrap flex-shrink-0">
                       Change Avatar
                     </button>
                     <p className="text-xs text-gray-500 mt-2">JPG, GIF or PNG. Max size of 800K</p>
@@ -144,7 +144,7 @@ export default function SettingsPage() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-6 py-2.5 rounded-xl text-white font-medium text-sm flex items-center gap-2 bg-[var(--primary-600)] hover:bg-[var(--primary-500)] transition-colors disabled:opacity-50"
+                    className="px-6 py-2.5 rounded-xl text-white font-medium text-sm flex items-center gap-2 bg-[var(--primary-600)] hover:bg-[var(--primary-500)] transition-colors disabled:opacity-50 whitespace-nowrap flex-shrink-0"
                   >
                     {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
                     Save Changes
@@ -158,27 +158,27 @@ export default function SettingsPage() {
                 <h2 className="text-lg font-semibold mb-4">Security Settings</h2>
                 
                 <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-tertiary)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-sm mb-1 text-white flex items-center gap-2">
                       <Key size={16} className="text-[var(--primary-400)]" />
                       Change Password
                     </h3>
                     <p className="text-xs text-gray-400">Update your password to keep your account secure.</p>
                   </div>
-                  <button className="px-4 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-color)] text-sm font-medium text-white hover:bg-[var(--bg-hover)] transition-colors">
+                  <button className="px-4 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-color)] text-sm font-medium text-white hover:bg-[var(--bg-hover)] transition-colors whitespace-nowrap flex-shrink-0">
                     Update Password
                   </button>
                 </div>
                 
                 <div className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-tertiary)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-medium text-sm mb-1 text-white flex items-center gap-2">
                       <Smartphone size={16} className="text-[var(--primary-400)]" />
                       Two-Factor Authentication
                     </h3>
                     <p className="text-xs text-gray-400">Add an extra layer of security to your account.</p>
                   </div>
-                  <button className="px-4 py-2 rounded-lg bg-[var(--primary-500)]/10 text-[var(--primary-400)] border border-[var(--primary-500)]/20 text-sm font-medium hover:bg-[var(--primary-500)]/20 transition-colors">
+                  <button className="px-4 py-2 rounded-lg bg-[var(--primary-500)]/10 text-[var(--primary-400)] border border-[var(--primary-500)]/20 text-sm font-medium hover:bg-[var(--primary-500)]/20 transition-colors whitespace-nowrap flex-shrink-0">
                     Enable 2FA
                   </button>
                 </div>
@@ -191,7 +191,7 @@ export default function SettingsPage() {
                 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)]">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-sm text-white flex items-center gap-2">
                         <Bell size={16} className="text-[var(--primary-400)]" />
                         Push Notifications
@@ -210,7 +210,7 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)]">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-sm text-white flex items-center gap-2">
                         <Moon size={16} className="text-[var(--primary-400)]" />
                         Dark Mode

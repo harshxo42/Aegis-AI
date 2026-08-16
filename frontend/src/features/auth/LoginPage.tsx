@@ -30,7 +30,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-x-hidden px-4">
+    <div className="min-h-screen flex items-center justify-center relative overflow-x-hidden px-4 py-10">
       {/* Animated background */}
       <div className="absolute inset-0" style={{ background: 'var(--bg-primary)' }}>
         <div className="absolute inset-0 gradient-mesh" />
@@ -55,9 +55,9 @@ export default function LoginPage() {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         className="relative z-10 w-full max-w-md"
       >
-          <div
+        <div
           className="glass-card p-6 sm:p-8 w-full"
-          style={{ background: 'rgba(17, 24, 39, 0.7)' }}
+          style={{ background: 'rgba(17, 24, 39, 0.75)' }}
         >
           {/* Logo */}
           <div className="text-center mb-8">
@@ -98,16 +98,16 @@ export default function LoginPage() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <div className="flex flex-col">
+              <label className="text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Email Address
               </label>
               <div className="relative">
                 <Mail
                   size={18}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2"
-                  style={{ color: 'var(--text-muted)' }}
+                  className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ left: '14px', color: 'var(--text-muted)', flexShrink: 0 }}
                 />
                 <input
                   type="email"
@@ -115,25 +115,30 @@ export default function LoginPage() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="you@example.com"
                   required
-                  className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-[var(--primary-500)]"
+                  className="w-full rounded-xl text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-[var(--primary-500)]"
                   style={{
                     background: 'var(--bg-tertiary)',
                     border: '1px solid var(--border-color)',
                     color: 'var(--text-primary)',
+                    paddingLeft: '44px',
+                    paddingRight: '14px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    height: '46px',
                   }}
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Password
               </label>
               <div className="relative">
                 <Lock
                   size={18}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2"
-                  style={{ color: 'var(--text-muted)' }}
+                  className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ left: '14px', color: 'var(--text-muted)', flexShrink: 0 }}
                 />
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -142,17 +147,22 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   required
                   minLength={6}
-                  className="w-full pl-10 pr-12 py-3 rounded-xl text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-[var(--primary-500)]"
+                  className="w-full rounded-xl text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-[var(--primary-500)]"
                   style={{
                     background: 'var(--bg-tertiary)',
                     border: '1px solid var(--border-color)',
                     color: 'var(--text-primary)',
+                    paddingLeft: '44px',
+                    paddingRight: '46px',
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    height: '46px',
                   }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 focus:outline-none"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded focus:outline-none"
                   style={{ color: 'var(--text-muted)' }}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -160,16 +170,16 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
               <label className="flex items-center gap-2 cursor-pointer group">
-                <input type="checkbox" className="w-4 h-4 rounded border-gray-500 bg-[var(--bg-tertiary)] text-[var(--primary-500)] focus:ring-[var(--primary-500)] focus:ring-offset-[var(--bg-card)] focus:ring-offset-2 transition-colors cursor-pointer" />
+                <input type="checkbox" className="flex-shrink-0 w-4 h-4 rounded border-gray-500 bg-[var(--bg-tertiary)] text-[var(--primary-500)] focus:ring-[var(--primary-500)] focus:ring-offset-[var(--bg-card)] focus:ring-offset-2 transition-colors cursor-pointer" />
                 <span className="text-sm select-none" style={{ color: 'var(--text-muted)' }}>
                   Remember me
                 </span>
               </label>
               <Link
                 to="/forgot-password"
-                className="text-sm font-medium transition-colors hover:text-[var(--primary-300)]"
+                className="text-sm font-medium transition-colors hover:text-[var(--primary-300)] whitespace-nowrap"
                 style={{ color: 'var(--primary-400)' }}
               >
                 Forgot password?
@@ -199,28 +209,69 @@ export default function LoginPage() {
           </form>
 
           {/* Demo Credentials */}
-          <div className="mt-8 p-4 rounded-xl relative overflow-hidden" style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.15)' }}>
-            <div className="absolute top-0 right-0 bg-[var(--warning-500)]/20 text-[var(--warning-400)] text-[10px] font-bold px-2 py-1 rounded-bl-lg border-b border-l border-[var(--warning-500)]/30 tracking-wider">
-              DEMO ONLY
+          <div
+            className="mt-6 p-4 sm:p-5 rounded-2xl"
+            style={{
+              background: 'rgba(59, 130, 246, 0.05)',
+              border: '1px solid rgba(59, 130, 246, 0.18)',
+            }}
+          >
+            <div className="flex items-center justify-between gap-2 mb-3.5">
+              <span
+                className="text-xs font-semibold tracking-wider uppercase"
+                style={{ color: 'var(--primary-400)' }}
+              >
+                Demo Accounts
+              </span>
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-md tracking-wider uppercase flex-shrink-0"
+                style={{
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  color: 'var(--warning-400)',
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                }}
+              >
+                Demo Only
+              </span>
             </div>
-            <p className="text-xs font-semibold mb-3 tracking-wide uppercase" style={{ color: 'var(--primary-400)' }}>
-              Demo Accounts
-            </p>
-            <div className="space-y-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-              <div className="flex justify-between items-center bg-[var(--bg-tertiary)]/50 p-2 rounded">
-                <span className="font-medium text-[var(--text-primary)]">Admin</span>
-                <span className="font-mono">admin@aegisai.com</span>
+
+            <div className="space-y-2 text-xs">
+              <div
+                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl"
+                style={{
+                  background: 'rgba(31, 41, 55, 0.65)',
+                  border: '1px solid rgba(75, 85, 99, 0.25)',
+                }}
+              >
+                <span className="font-medium text-xs text-[var(--text-primary)] flex-shrink-0">Admin</span>
+                <span className="font-mono text-[11px] sm:text-xs text-[var(--text-muted)] text-right truncate">admin@aegisai.com</span>
               </div>
-              <div className="flex justify-between items-center bg-[var(--bg-tertiary)]/50 p-2 rounded">
-                <span className="font-medium text-[var(--text-primary)]">Patient</span>
-                <span className="font-mono">patient@aegisai.com</span>
+              <div
+                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl"
+                style={{
+                  background: 'rgba(31, 41, 55, 0.65)',
+                  border: '1px solid rgba(75, 85, 99, 0.25)',
+                }}
+              >
+                <span className="font-medium text-xs text-[var(--text-primary)] flex-shrink-0">Patient</span>
+                <span className="font-mono text-[11px] sm:text-xs text-[var(--text-muted)] text-right truncate">patient@aegisai.com</span>
               </div>
-              <div className="flex justify-between items-center bg-[var(--bg-tertiary)]/50 p-2 rounded">
-                <span className="font-medium text-[var(--text-primary)]">Doctor</span>
-                <span className="font-mono">dr.mehta@aegisai.com</span>
+              <div
+                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl"
+                style={{
+                  background: 'rgba(31, 41, 55, 0.65)',
+                  border: '1px solid rgba(75, 85, 99, 0.25)',
+                }}
+              >
+                <span className="font-medium text-xs text-[var(--text-primary)] flex-shrink-0">Doctor</span>
+                <span className="font-mono text-[11px] sm:text-xs text-[var(--text-muted)] text-right truncate">dr.mehta@aegisai.com</span>
               </div>
             </div>
-            <p className="text-[10px] text-center mt-3 opacity-60 italic text-[var(--danger-400)]">
+
+            <p
+              className="text-[11px] text-center mt-3.5 leading-relaxed"
+              style={{ color: 'rgba(251, 113, 133, 0.85)' }}
+            >
               Never use real credentials on demo environments.
             </p>
           </div>

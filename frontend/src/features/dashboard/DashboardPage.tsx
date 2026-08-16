@@ -1,298 +1,826 @@
 /**
- * Aegis AI – Dashboard Page
+ * Aegis AI – Dashboard
  *
- * Role-specific dashboard with stats, charts, and quick actions.
+ * Main emergency-response dashboard.
+ * - Role based statistics
+ * - Emergency status
+ * - Quick actions
+ * - Recent emergencies
+ * - Loading / error handling
+ * - Responsive friendly
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+
 import { useAppSelector } from '@/store';
 import { analyticsAPI } from '@/api/client';
 import type { DashboardStats } from '@/types';
+
 import {
-  Building2, Bed, HeartPulse, Ambulance, Users, AlertTriangle,
-  TrendingUp, Activity, Clock, ChevronRight, Phone
+  Building2,
+  Bed,
+  HeartPulse,
+  Ambulance,
+  Users,
+  AlertTriangle,
+  TrendingUp,
+  Clock,
+  ChevronRight,
+  Phone,
+  ShieldCheck,
+  MapPin,
+  MessageSquare,
+  FileText,
+  RefreshCw,
 } from 'lucide-react';
 
 const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
+  hidden: {
+    opacity: 0,
+  },
+
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.06,
+    },
+  },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
+  hidden: {
+    opacity: 0,
+    y: 20,
+  },
+
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+    },
+  },
 };
 
 export default function DashboardPage() {
-  const { user } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats>({});
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await analyticsAPI.getDashboard();
-        setStats(response.data.data || {});
-      } catch (error) {
-        console.error('Failed to fetch dashboard stats:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
+  const { user } = useAppSelector(
+    (state) => state.auth
+  );
 
-  const isAdmin = user?.role === 'hospital_admin' || user?.role === 'government_admin';
-  const isPatient = user?.role === 'patient';
+  const [stats, setStats] =
+    useState<DashboardStats>({});
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState(false);
+
+  /* ============================================================
+     USER / ROLE
+     ============================================================ */
+
+  const role = user?.role || 'patient';
+
+  const isPatient =
+    role === 'patient';
+
+  const isAdmin =
+    role === 'hospital_admin' ||
+    role === 'government_admin';
+
+  /* ============================================================
+     GREETING
+     ============================================================ */
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
+
+    if (hour < 12) {
+      return 'Good Morning';
+    }
+
+    if (hour < 17) {
+      return 'Good Afternoon';
+    }
+
     return 'Good Evening';
   };
 
-  const adminStats = [
-    {
-      label: 'Total Hospitals',
-      value: stats.total_hospitals || 0,
-      icon: <Building2 size={22} />,
-      color: '#3b82f6',
-      gradient: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-    },
-    {
-      label: 'Available Beds',
-      value: stats.total_available_beds || 0,
-      icon: <Bed size={22} />,
-      color: '#10b981',
-      gradient: 'linear-gradient(135deg, #10b981, #059669)',
-    },
-    {
-      label: 'Active Emergencies',
-      value: stats.active_emergencies || 0,
-      icon: <AlertTriangle size={22} />,
-      color: '#f43f5e',
-      gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)',
-    },
-    {
-      label: 'Ambulances Available',
-      value: stats.available_ambulances || 0,
-      icon: <Ambulance size={22} />,
-      color: '#f59e0b',
-      gradient: 'linear-gradient(135deg, #f59e0b, #d97706)',
-    },
-    {
-      label: 'ICU Available',
-      value: stats.total_icu_available || 0,
-      icon: <HeartPulse size={22} />,
-      color: '#8b5cf6',
-      gradient: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-    },
-    {
-      label: 'Total Users',
-      value: stats.total_users || 0,
-      icon: <Users size={22} />,
-      color: '#06b6d4',
-      gradient: 'linear-gradient(135deg, #06b6d4, #0891b2)',
-    },
-  ];
+  const firstName =
+    user?.full_name
+      ?.trim()
+      ?.split(/\s+/)[0] || 'User';
 
-  const patientStats = [
-    {
-      label: 'My Emergencies',
-      value: stats.total_emergencies || 0,
-      icon: <AlertTriangle size={22} />,
-      color: '#f43f5e',
-      gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)',
-    },
-    {
-      label: 'Nearby Hospitals',
-      value: stats.nearby_hospitals || 0,
-      icon: <Building2 size={22} />,
-      color: '#3b82f6',
-      gradient: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-    },
-  ];
+  /* ============================================================
+     FETCH DASHBOARD DATA
+     ============================================================ */
 
-  const displayStats = isAdmin ? adminStats : isPatient ? patientStats : adminStats.slice(0, 4);
+  const fetchStats = useCallback(
+    async () => {
+      setLoading(true);
+      setError(false);
+
+      try {
+        const response =
+          await analyticsAPI.getDashboard();
+
+        setStats(
+          response?.data?.data || {}
+        );
+      } catch (err) {
+        console.error(
+          'Failed to fetch dashboard stats:',
+          err
+        );
+
+        setError(true);
+        setStats({});
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  /* ============================================================
+     STATISTICS
+     ============================================================ */
+
+  const adminStats = useMemo(
+    () => [
+      {
+        label: 'Total Hospitals',
+        value:
+          stats.total_hospitals || 0,
+        icon: <Building2 size={22} />,
+        color: '#3b82f6',
+        gradient:
+          'linear-gradient(135deg, #3b82f6, #2563eb)',
+      },
+
+      {
+        label: 'Available Beds',
+        value:
+          stats.total_available_beds || 0,
+        icon: <Bed size={22} />,
+        color: '#10b981',
+        gradient:
+          'linear-gradient(135deg, #10b981, #059669)',
+      },
+
+      {
+        label: 'Active Emergencies',
+        value:
+          stats.active_emergencies || 0,
+        icon: <AlertTriangle size={22} />,
+        color: '#f43f5e',
+        gradient:
+          'linear-gradient(135deg, #f43f5e, #e11d48)',
+      },
+
+      {
+        label: 'Ambulances Available',
+        value:
+          stats.available_ambulances || 0,
+        icon: <Ambulance size={22} />,
+        color: '#f59e0b',
+        gradient:
+          'linear-gradient(135deg, #f59e0b, #d97706)',
+      },
+
+      {
+        label: 'ICU Available',
+        value:
+          stats.total_icu_available || 0,
+        icon: <HeartPulse size={22} />,
+        color: '#8b5cf6',
+        gradient:
+          'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+      },
+
+      {
+        label: 'Total Users',
+        value:
+          stats.total_users || 0,
+        icon: <Users size={22} />,
+        color: '#06b6d4',
+        gradient:
+          'linear-gradient(135deg, #06b6d4, #0891b2)',
+      },
+    ],
+    [stats]
+  );
+
+  const patientStats = useMemo(
+    () => [
+      {
+        label: 'My Emergencies',
+        value:
+          stats.total_emergencies || 0,
+        icon: <Ambulance size={22} />,
+        color: '#3b82f6',
+        gradient:
+          'linear-gradient(135deg, #3b82f6, #2563eb)',
+      },
+
+      {
+        label: 'Nearby Hospitals',
+        value:
+          stats.nearby_hospitals || 0,
+        icon: <Building2 size={22} />,
+        color: '#8b5cf6',
+        gradient:
+          'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+      },
+    ],
+    [stats]
+  );
+
+  const displayStats = isPatient
+    ? patientStats
+    : isAdmin
+      ? adminStats
+      : adminStats.slice(0, 4);
+
+  /* ============================================================
+     QUICK ACTIONS
+     ============================================================ */
+
+  const quickActions = useMemo(() => {
+    const actions = [
+      {
+        label: 'Find Hospital',
+        description:
+          'Locate nearby medical centers',
+        icon: <Building2 size={20} />,
+        path: '/hospitals',
+        color: '#3b82f6',
+        gradient:
+          'linear-gradient(135deg, #3b82f6, #2563eb)',
+        roles: [
+          'patient',
+          'doctor',
+          'hospital_admin',
+          'government_admin',
+        ],
+      },
+
+      {
+        label: 'AI Predictions',
+        description:
+          'Assess symptoms & triage',
+        icon: <TrendingUp size={20} />,
+        path: '/ai/predictions',
+        color: '#8b5cf6',
+        gradient:
+          'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+        roles: [
+          'patient',
+          'doctor',
+          'hospital_admin',
+        ],
+      },
+
+      {
+        label: 'View Map',
+        description:
+          'Live tracking & facilities',
+        icon: <MapPin size={20} />,
+        path: '/map',
+        color: '#10b981',
+        gradient:
+          'linear-gradient(135deg, #10b981, #059669)',
+        roles: [
+          'patient',
+          'ambulance_driver',
+          'hospital_admin',
+          'government_admin',
+        ],
+      },
+
+      {
+        label: 'AI Chat',
+        description:
+          'Talk with Aegis AI',
+        icon: <MessageSquare size={20} />,
+        path: '/ai/chat',
+        color: '#6366f1',
+        gradient:
+          'linear-gradient(135deg, #6366f1, #4f46e5)',
+        roles: [
+          'patient',
+          'doctor',
+        ],
+      },
+
+      {
+        label: 'Medical Reports',
+        description:
+          'View your medical records',
+        icon: <FileText size={20} />,
+        path: '/reports',
+        color: '#06b6d4',
+        gradient:
+          'linear-gradient(135deg, #06b6d4, #0891b2)',
+        roles: [
+          'patient',
+          'doctor',
+        ],
+      },
+
+      {
+        label: 'Notifications',
+        description:
+          'Recent alerts & updates',
+        icon: <Clock size={20} />,
+        path: '/notifications',
+        color: '#f59e0b',
+        gradient:
+          'linear-gradient(135deg, #f59e0b, #d97706)',
+        roles: [
+          'patient',
+          'doctor',
+          'ambulance_driver',
+          'hospital_admin',
+          'government_admin',
+        ],
+      },
+    ];
+
+    return actions.filter((action) =>
+      action.roles.includes(role)
+    );
+  }, [role]);
+
+  /* ============================================================
+     HELPERS
+     ============================================================ */
+
+  const formatStatus = (
+    status?: string
+  ) => {
+    if (!status) {
+      return 'Unknown';
+    }
+
+    return status
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) =>
+        char.toUpperCase()
+      );
+  };
+
+  /* ============================================================
+     RENDER
+     ============================================================ */
 
   return (
     <motion.div
+      className="dashboard-page"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="space-y-6"
     >
-      {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {getGreeting()}, {user?.full_name?.split(' ')[0]} 👋
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-            Here's your emergency response overview for today
-          </p>
-        </div>
-        {isPatient && (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/emergency')}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold text-sm"
-            style={{
-              background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-              boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)',
-            }}
-          >
-            <Phone size={18} />
-            SOS Emergency
-          </motion.button>
-        )}
-      </motion.div>
+      <div className="dashboard-inner">
 
-      {/* Active Emergency Alert */}
-      {isPatient && stats.active_emergency && (
-        <motion.div
+        {/* ======================================================
+            PAGE HEADER
+        ====================================================== */}
+
+        <motion.section
           variants={itemVariants}
-          className="p-4 rounded-xl flex items-center justify-between cursor-pointer"
-          style={{
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-          }}
-          onClick={() => navigate(`/emergencies`)}
+          className="dashboard-header"
         >
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <AlertTriangle size={24} style={{ color: 'var(--danger-400)' }} />
-              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full animate-ping" style={{ background: '#ef4444' }} />
-            </div>
-            <div>
-              <p className="font-semibold text-sm" style={{ color: 'var(--danger-400)' }}>
-                Active Emergency
-              </p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Status: {stats.active_emergency.status} • Severity: {stats.active_emergency.severity}/5
-              </p>
-            </div>
-          </div>
-          <ChevronRight size={18} style={{ color: 'var(--danger-400)' }} />
-        </motion.div>
-      )}
+          <div className="dashboard-heading">
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {displayStats.map((stat, _index) => (
+            <span className="dashboard-page-title">
+              DASHBOARD
+            </span>
+
+            <div className="dashboard-title-row">
+              <h1>
+                {getGreeting()}, {firstName}
+
+                <span
+                  className="dashboard-wave"
+                  aria-hidden="true"
+                >
+                  👋
+                </span>
+              </h1>
+            </div>
+
+            <p>
+              Here's your emergency response
+              overview for today
+            </p>
+          </div>
+
+          <div className="dashboard-header-actions">
+
+            {isPatient && (
+              <motion.button
+                type="button"
+                whileHover={{
+                  y: -2,
+                }}
+                whileTap={{
+                  scale: 0.98,
+                }}
+                onClick={() =>
+                  navigate('/emergency')
+                }
+                className="dashboard-sos"
+              >
+                <Phone size={18} />
+                <span>
+                  SOS Emergency
+                </span>
+              </motion.button>
+            )}
+
+          </div>
+        </motion.section>
+
+        {/* ======================================================
+            ERROR STATE
+        ====================================================== */}
+
+        {error && (
           <motion.div
-            key={stat.label}
             variants={itemVariants}
-            className="glass-card p-5 group cursor-pointer"
+            className="dashboard-error"
           >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                  {stat.label}
-                </p>
-                <p className="text-3xl font-bold mt-2" style={{ color: stat.color }}>
-                  {loading ? (
-                    <span className="skeleton inline-block w-16 h-8" />
-                  ) : (
-                    stat.value.toLocaleString()
-                  )}
-                </p>
+            <div>
+              <strong>
+                Unable to load dashboard data
+              </strong>
+
+              <p>
+                Please check your connection
+                and try again.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={fetchStats}
+            >
+              <RefreshCw size={16} />
+              Retry
+            </button>
+          </motion.div>
+        )}
+
+        {/* ======================================================
+            ACTIVE EMERGENCY
+        ====================================================== */}
+
+        {isPatient &&
+          stats.active_emergency && (
+            <motion.button
+              type="button"
+              variants={itemVariants}
+              className="active-emergency"
+              onClick={() =>
+                navigate('/emergencies')
+              }
+            >
+              <div className="emergency-left">
+
+                <div className="emergency-icon">
+                  <AlertTriangle size={22} />
+
+                  <span className="emergency-pulse" />
+                </div>
+
+                <div className="emergency-content">
+                  <h3>
+                    Active Emergency in Progress
+                  </h3>
+
+                  <p>
+                    <span>Status:</span>{' '}
+
+                    <strong>
+                      {formatStatus(
+                        stats.active_emergency.status
+                      )}
+                    </strong>
+
+                    <span className="emergency-dot">
+                      •
+                    </span>
+
+                    <span>
+                      Severity:
+                    </span>{' '}
+
+                    <strong>
+                      {
+                        stats.active_emergency
+                          .severity
+                      }
+                      /5
+                    </strong>
+                  </p>
+                </div>
               </div>
+
+              <span className="emergency-arrow">
+                <ChevronRight size={20} />
+              </span>
+            </motion.button>
+          )}
+
+        {/* ======================================================
+            STATISTICS
+        ====================================================== */}
+
+        <motion.section
+          variants={itemVariants}
+          className={`dashboard-stats ${
+            isPatient
+              ? 'patient-stats'
+              : ''
+          }`}
+        >
+          {displayStats.map((stat) => (
+            <motion.article
+              key={stat.label}
+              className="dashboard-stat-card"
+              whileHover={{
+                y: -2,
+              }}
+              transition={{
+                duration: 0.15,
+              }}
+            >
+              <div className="stat-content">
+
+                <span className="stat-label">
+                  {stat.label}
+                </span>
+
+                {loading ? (
+                  <span
+                    className="stat-loading"
+                    aria-label="Loading"
+                  />
+                ) : (
+                  <strong className="stat-number">
+                    {Number(
+                      stat.value || 0
+                    ).toLocaleString()}
+                  </strong>
+                )}
+              </div>
+
               <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-white transition-transform group-hover:scale-110"
-                style={{ background: stat.gradient }}
+                className="stat-icon"
+                style={{
+                  background:
+                    stat.gradient,
+
+                  boxShadow:
+                    `0 8px 24px ${stat.color}30`,
+                }}
               >
                 {stat.icon}
               </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Quick Actions */}
-      <motion.div variants={itemVariants}>
-        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: 'Find Hospital', icon: <Building2 size={20} />, path: '/hospitals', color: '#3b82f6' },
-            { label: 'AI Predictions', icon: <TrendingUp size={20} />, path: '/ai/predictions', color: '#8b5cf6' },
-            { label: 'View Map', icon: <Activity size={20} />, path: '/map', color: '#10b981' },
-            { label: 'Notifications', icon: <Clock size={20} />, path: '/notifications', color: '#f59e0b' },
-          ].map((action) => (
-            <motion.button
-              key={action.label}
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate(action.path)}
-              className="glass-card p-4 flex items-center gap-3 text-left w-full"
-            >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
-                style={{ background: action.color }}
-              >
-                {action.icon}
-              </div>
-              <span className="font-medium text-sm">{action.label}</span>
-            </motion.button>
+            </motion.article>
           ))}
-        </div>
-      </motion.div>
+        </motion.section>
 
-      {/* Recent Emergencies (Admin) */}
-      {isAdmin && stats.recent_emergencies && stats.recent_emergencies.length > 0 && (
-        <motion.div variants={itemVariants}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Recent Emergencies</h2>
-            <button
-              onClick={() => navigate('/emergencies')}
-              className="text-sm font-medium flex items-center gap-1"
-              style={{ color: 'var(--primary-400)' }}
+        {/* ======================================================
+            QUICK ACTIONS
+        ====================================================== */}
+
+        <motion.section
+          variants={itemVariants}
+          className="quick-actions-section"
+        >
+          <div className="section-heading">
+            <div>
+              <h2>
+                Quick Actions
+              </h2>
+
+              <p>
+                Frequently used tools and
+                emergency services
+              </p>
+            </div>
+          </div>
+
+          <div className="quick-actions-grid">
+
+            {quickActions.map((action) => (
+              <motion.button
+                key={action.label}
+                type="button"
+                whileHover={{
+                  y: -3,
+                }}
+                whileTap={{
+                  scale: 0.985,
+                }}
+                onClick={() =>
+                  navigate(action.path)
+                }
+                className="quick-action-card"
+              >
+                <span
+                  className="quick-action-icon"
+                  style={{
+                    background:
+                      action.gradient,
+
+                    boxShadow:
+                      `0 8px 22px ${action.color}30`,
+                  }}
+                >
+                  {action.icon}
+                </span>
+
+                <span className="quick-action-content">
+
+                  <strong>
+                    {action.label}
+                  </strong>
+
+                  <span>
+                    {action.description}
+                  </span>
+
+                </span>
+
+                <ChevronRight
+                  size={18}
+                  className="quick-action-arrow"
+                />
+              </motion.button>
+            ))}
+
+          </div>
+        </motion.section>
+
+        {/* ======================================================
+            RECENT EMERGENCIES
+        ====================================================== */}
+
+        {isAdmin &&
+          stats.recent_emergencies &&
+          stats.recent_emergencies.length > 0 && (
+            <motion.section
+              variants={itemVariants}
+              className="recent-emergencies"
             >
-              View All <ChevronRight size={14} />
-            </button>
+              <div className="section-heading section-heading-row">
+
+                <div>
+                  <h2>
+                    Recent Emergencies
+                  </h2>
+
+                  <p>
+                    Latest incoming requests
+                    across your jurisdiction
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate('/emergencies')
+                  }
+                  className="view-all-button"
+                >
+                  <span>
+                    View All
+                  </span>
+
+                  <ChevronRight
+                    size={16}
+                  />
+                </button>
+
+              </div>
+
+              <div className="recent-table-card">
+
+                <div className="recent-table-scroll">
+
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>
+                          Type
+                        </th>
+
+                        <th>
+                          Severity
+                        </th>
+
+                        <th>
+                          Status
+                        </th>
+
+                        <th>
+                          Time
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {stats.recent_emergencies.map(
+                        (emergency) => (
+                          <tr
+                            key={
+                              emergency.id
+                            }
+                            onClick={() =>
+                              navigate(
+                                '/emergencies'
+                              )
+                            }
+                          >
+                            <td>
+                              {
+                                emergency.type
+                              }
+                            </td>
+
+                            <td>
+                              <span
+                                className={`severity-${emergency.severity}`}
+                              >
+                                Level{' '}
+                                {
+                                  emergency.severity
+                                }
+                              </span>
+                            </td>
+
+                            <td>
+                              <span
+                                className={`status-${emergency.status}`}
+                              >
+                                {formatStatus(
+                                  emergency.status
+                                )}
+                              </span>
+                            </td>
+
+                            <td>
+                              {emergency.requested_at
+                                ? new Date(
+                                    emergency.requested_at
+                                  ).toLocaleString()
+                                : '-'}
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+
+                </div>
+              </div>
+            </motion.section>
+          )}
+
+        {/* ======================================================
+            FOOTER
+        ====================================================== */}
+
+        <motion.footer
+          variants={itemVariants}
+          className="dashboard-footer"
+        >
+          <div className="footer-brand">
+            <ShieldCheck size={15} />
+
+            <span>
+              Aegis AI
+            </span>
           </div>
-          <div className="glass-card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-[var(--bg-tertiary)]/50">
-                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <th className="text-left py-3 px-4 font-semibold text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Type</th>
-                  <th className="text-left py-3 px-4 font-semibold text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Severity</th>
-                  <th className="text-left py-3 px-4 font-semibold text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Status</th>
-                  <th className="text-left py-3 px-4 font-semibold text-xs uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Time</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border-color)]">
-                {stats.recent_emergencies.map((e) => (
-                  <tr
-                    key={e.id}
-                    className="transition-colors hover:bg-[var(--bg-hover)] cursor-pointer"
-                  >
-                    <td className="py-3 px-4 capitalize">{e.type}</td>
-                    <td className="py-3 px-4">
-                      <span className={`severity-${e.severity} px-2 py-0.5 rounded-full text-xs font-medium`}>
-                        Level {e.severity}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`status-${e.status} capitalize font-medium`}>
-                        {e.status.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                      {e.requested_at ? new Date(e.requested_at).toLocaleDateString() : '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
-      )}
+
+          <span>
+            © 2026 Aegis AI. All rights reserved.
+          </span>
+        </motion.footer>
+
+      </div>
     </motion.div>
   );
 }

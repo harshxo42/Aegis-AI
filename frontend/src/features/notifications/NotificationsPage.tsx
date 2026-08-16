@@ -125,12 +125,12 @@ export default function NotificationsPage() {
                   {getIcon(notif.notification_type)}
                 </div>
                 
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1 gap-1">
                     <h3 className={`text-sm font-semibold ${!notif.is_read ? 'text-white' : 'text-gray-300'}`}>
                       {notif.title}
                     </h3>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
                       {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
                     </span>
                   </div>

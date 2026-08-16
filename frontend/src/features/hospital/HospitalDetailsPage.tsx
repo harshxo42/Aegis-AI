@@ -83,7 +83,7 @@ export default function HospitalDetailsPage() {
       </button>
 
       {/* Header Profile */}
-      <div className="glass-card overflow-hidden">
+      <div className="glass-card">
         <div className="h-48 relative" style={{ background: 'linear-gradient(135deg, var(--primary-900), var(--bg-secondary))' }}>
           <div className="absolute inset-0 bg-black/40" />
           <div className="absolute -bottom-16 left-8 flex items-end gap-6">
@@ -112,11 +112,11 @@ export default function HospitalDetailsPage() {
 
         <div className="pt-20 px-8 pb-8">
           <div className="flex flex-col md:flex-row justify-between gap-6">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-white mb-2">{hospital.name}</h1>
-              <p className="text-gray-400 text-sm flex items-center gap-2 mb-4">
-                <MapPin size={16} />
-                {hospital.address}, {hospital.city}, {hospital.state} {hospital.pincode}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 break-words">{hospital.name}</h1>
+              <p className="text-gray-400 text-sm flex items-start gap-2 mb-4">
+                <MapPin size={16} className="mt-0.5 flex-shrink-0" />
+                <span>{hospital.address}, {hospital.city}, {hospital.state} {hospital.pincode}</span>
               </p>
               
               <div className="flex flex-wrap gap-4 text-sm">
@@ -138,7 +138,15 @@ export default function HospitalDetailsPage() {
 
             <div className="flex-shrink-0">
               <button 
-                onClick={() => navigate('/emergency')}
+                onClick={() =>
+  navigate('/emergency', {
+    state: {
+      hospitalId: hospital.id,
+      hospitalName: hospital.name,
+      hospitalAddress: `${hospital.address}, ${hospital.city}`,
+    },
+  })
+}
                 className="w-full md:w-auto px-6 py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2"
                 style={{ background: 'linear-gradient(135deg, var(--danger-600), var(--danger-500))', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)' }}
               >
@@ -213,7 +221,7 @@ export default function HospitalDetailsPage() {
           {/* Facilities List */}
           <div className="glass-card p-6">
             <h2 className="text-xl font-bold mb-4">Facilities</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {facilities.map((fac) => (
                 // @ts-ignore
                 hospital[fac.key] ? (

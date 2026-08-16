@@ -162,13 +162,17 @@ export default function RegisterPage() {
               </div>
             ) : (
               /* Step 2: Account Details */
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                     Full Name
                   </label>
                   <div className="relative">
-                    <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                    <User
+                      size={18}
+                      className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ left: '14px', color: 'var(--text-muted)', flexShrink: 0 }}
+                    />
                     <input
                       type="text"
                       value={formData.full_name}
@@ -176,47 +180,86 @@ export default function RegisterPage() {
                       placeholder="John Doe"
                       required
                       minLength={2}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
-                      style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                      className="w-full rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-primary)',
+                        paddingLeft: '44px',
+                        paddingRight: '14px',
+                        paddingTop: '12px',
+                        paddingBottom: '12px',
+                        height: '46px',
+                      }}
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Email</label>
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Email</label>
                   <div className="relative">
-                    <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                    <Mail
+                      size={18}
+                      className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ left: '14px', color: 'var(--text-muted)', flexShrink: 0 }}
+                    />
                     <input
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       placeholder="you@example.com"
                       required
-                      className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
-                      style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                      className="w-full rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-primary)',
+                        paddingLeft: '44px',
+                        paddingRight: '14px',
+                        paddingTop: '12px',
+                        paddingBottom: '12px',
+                        height: '46px',
+                      }}
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Phone (Optional)</label>
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Phone (Optional)</label>
                   <div className="relative">
-                    <Phone size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                    <Phone
+                      size={18}
+                      className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ left: '14px', color: 'var(--text-muted)', flexShrink: 0 }}
+                    />
                     <input
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       placeholder="+91 98765 43210"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
-                      style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                      className="w-full rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-primary)',
+                        paddingLeft: '44px',
+                        paddingRight: '14px',
+                        paddingTop: '12px',
+                        paddingBottom: '12px',
+                        height: '46px',
+                      }}
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Password</label>
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Password</label>
                   <div className="relative">
-                    <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                    <Lock
+                      size={18}
+                      className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ left: '14px', color: 'var(--text-muted)', flexShrink: 0 }}
+                    />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={formData.password}
@@ -224,19 +267,32 @@ export default function RegisterPage() {
                       placeholder="Min 8 chars, uppercase, lowercase, digit"
                       required
                       minLength={8}
-                      className="w-full pl-10 pr-12 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
-                      style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                      className="w-full rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-primary)',
+                        paddingLeft: '44px',
+                        paddingRight: '46px',
+                        paddingTop: '12px',
+                        paddingBottom: '12px',
+                        height: '46px',
+                      }}
                     />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 focus:outline-none" style={{ color: 'var(--text-muted)' }}>
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded focus:outline-none" style={{ color: 'var(--text-muted)' }}>
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Confirm Password</label>
+                <div className="flex flex-col">
+                  <label className="text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Confirm Password</label>
                   <div className="relative">
-                    <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                    <Lock
+                      size={18}
+                      className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ left: '14px', color: 'var(--text-muted)', flexShrink: 0 }}
+                    />
                     <input
                       type="password"
                       value={formData.confirm_password}
@@ -244,13 +300,22 @@ export default function RegisterPage() {
                       placeholder="Re-enter your password"
                       required
                       minLength={8}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
-                      style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                      className="w-full rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-primary)',
+                        paddingLeft: '44px',
+                        paddingRight: '14px',
+                        paddingTop: '12px',
+                        paddingBottom: '12px',
+                        height: '46px',
+                      }}
                     />
                   </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3 mt-2">
                   <button
                     type="button"
                     onClick={() => setStep(1)}

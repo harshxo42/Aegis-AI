@@ -134,9 +134,9 @@ export default function MedicalReportsPage() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="p-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] mb-6 flex items-center justify-between"
               >
-                <div className="flex items-center gap-3 overflow-hidden">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                   <File size={24} className="text-[var(--primary-400)] flex-shrink-0" />
-                  <div className="truncate">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">{file.name}</p>
                     <p className="text-xs text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>

@@ -90,8 +90,7 @@ export default function AIPredictionsPage() {
                 value={formData.symptoms}
                 onChange={(e) => setFormData({ ...formData, symptoms: e.target.value })}
                 placeholder="E.g. severe chest pain, shortness of breath, radiating pain to left arm..."
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)] resize-y min-h-[7rem] max-h-64"
-                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                className="w-full p-4 leading-relaxed break-words bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-white rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)] resize-y min-h-[7rem] max-h-64"
                 required
               />
             </div>
@@ -100,14 +99,27 @@ export default function AIPredictionsPage() {
               <div>
                 <label className="block text-sm font-medium mb-1.5 text-gray-300">Age</label>
                 <div className="relative">
-                  <Calendar size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <Calendar
+                    size={16}
+                    className="absolute top-1/2 -translate-y-1/2 text-gray-500 flex-shrink-0 pointer-events-none"
+                    style={{ left: '13px' }}
+                  />
                   <input
                     type="number"
                     value={formData.age}
                     onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                     placeholder="Years"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
-                    style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                    className="w-full rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)]"
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)',
+                      paddingLeft: '40px',
+                      paddingRight: '12px',
+                      paddingTop: '10px',
+                      paddingBottom: '10px',
+                      height: '42px',
+                    }}
                     required
                     min="0"
                     max="120"
@@ -117,12 +129,23 @@ export default function AIPredictionsPage() {
               <div>
                 <label className="block text-sm font-medium mb-1.5 text-gray-300">Gender</label>
                 <div className="relative">
-                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <User
+                    size={16}
+                    className="absolute top-1/2 -translate-y-1/2 text-gray-500 flex-shrink-0 pointer-events-none"
+                    style={{ left: '13px' }}
+                  />
                   <select
                     value={formData.gender}
                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)] appearance-none cursor-pointer"
-                    style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                    className="w-full rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)] appearance-none cursor-pointer"
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      border: '1px solid var(--border-color)',
+                      color: 'var(--text-primary)',
+                      paddingLeft: '40px',
+                      paddingRight: '14px',
+                      height: '42px',
+                    }}
                   >
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -138,8 +161,7 @@ export default function AIPredictionsPage() {
                 value={formData.medical_history}
                 onChange={(e) => setFormData({ ...formData, medical_history: e.target.value })}
                 placeholder="E.g. hypertension, diabetes, previous surgeries..."
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)] resize-y min-h-[5rem] max-h-64"
-                style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+                className="w-full p-4 leading-relaxed break-words bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-white rounded-xl text-sm outline-none transition-all focus:ring-2 focus:ring-[var(--primary-500)] resize-y min-h-[5rem] max-h-64"
               />
             </div>
 
@@ -223,11 +245,11 @@ export default function AIPredictionsPage() {
 
               {/* Recommendation */}
               <div className="p-5 rounded-xl border" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-tertiary)' }}>
-                <div className="flex gap-3">
-                  <AlertTriangle size={24} className="flex-shrink-0" style={{ color: getTriageColor(result.triage_level) }} />
-                  <div>
+                <div className="flex gap-3 items-start">
+                  <AlertTriangle size={22} className="flex-shrink-0 mt-0.5" style={{ color: getTriageColor(result.triage_level) }} />
+                  <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-sm mb-1 text-gray-200">Recommended Action</h4>
-                    <p className="text-sm text-gray-400 leading-relaxed">{result.recommended_action}</p>
+                    <p className="text-sm text-gray-400 leading-relaxed break-words">{result.recommended_action}</p>
                   </div>
                 </div>
               </div>
