@@ -20,6 +20,7 @@ import {
 import { useAppSelector, useAppDispatch } from '@/store';
 import { logout } from '@/store/authSlice';
 import { toggleSidebar } from '@/store/uiSlice';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export default function Navbar() {
   const dispatch = useAppDispatch();
@@ -175,6 +176,9 @@ export default function Navbar() {
          ====================================================== */}
 
       <div className="aegis-navbar-right">
+
+        {/* THEME TOGGLE */}
+        <ThemeToggle />
 
         {/* NOTIFICATIONS */}
 

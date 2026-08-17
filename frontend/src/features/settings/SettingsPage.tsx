@@ -6,24 +6,29 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useAppSelector } from '@/store';
+import { useAppDispatch, useAppSelector } from '@/store';
+import { toggleTheme } from '@/store/uiSlice';
 import { 
-  User, Shield, Bell, Moon, Monitor, 
+  User, Shield, Bell, Moon, Sun, Monitor, 
   Smartphone, Save, Key
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export default function SettingsPage() {
+  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
+  const theme = useAppSelector((state) => state.ui.theme);
+  const isDark = theme === 'dark';
+
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: user?.full_name || '',
     phone: user?.phone || '',
     email: user?.email || '',
-    theme: 'dark',
     notifications: true,
   });
+
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,15 +216,26 @@ export default function SettingsPage() {
 
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)]">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-sm text-white flex items-center gap-2">
-                        <Moon size={16} className="text-[var(--primary-400)]" />
-                        Dark Mode
+                      <h3 className="font-medium text-sm text-[var(--text-primary)] flex items-center gap-2">
+                        {isDark ? (
+                          <Moon size={16} className="text-[var(--primary-400)]" />
+                        ) : (
+                          <Sun size={16} className="text-[var(--primary-400)]" />
+                        )}
+                        {isDark ? 'Dark Mode' : 'Light Mode'}
                       </h3>
-                      <p className="text-xs text-gray-400 mt-1">Toggle between light and dark themes.</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">
+                        Currently using {isDark ? 'dark' : 'light'} theme. Toggle to switch.
+                      </p>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" checked={true} readOnly className="sr-only peer" />
-                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-500)]"></div>
+                    <label className="relative inline-flex items-center cursor-pointer" aria-label="Toggle dark/light theme">
+                      <input
+                        type="checkbox"
+                        checked={isDark}
+                        onChange={() => dispatch(toggleTheme())}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-[var(--border-active)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--primary-500)]"></div>
                     </label>
                   </div>
                 </div>
