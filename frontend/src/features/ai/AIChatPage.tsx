@@ -1,7 +1,7 @@
 /**
- * Aegis AI – AI Chat Assistant Page
+ * Aegis AI – AI Clinical Assistant Page
  *
- * Intelligent chatbot for health queries and emergency guidance.
+ * Intelligent medical assistant for clinical triage guidance, symptoms explanation, and platform queries.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -12,6 +12,7 @@ import {
   Bot,
   Send,
   User,
+  RotateCcw,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
@@ -28,10 +29,10 @@ interface Message {
 }
 
 const SUGGESTED_PROMPTS = [
-  'What should I do for chest pain?',
-  'What are the signs of a stroke?',
-  'How can I find the nearest hospital?',
-  'How does Emergency SOS work?',
+  'What should I do for acute chest pain?',
+  'What are the key clinical signs of a stroke?',
+  'How can I find the nearest emergency hospital?',
+  'How does the Aegis Emergency SOS dispatch work?',
 ];
 
 export default function AIChatPage() {
@@ -43,7 +44,7 @@ export default function AIChatPage() {
       role: 'assistant',
       content: `Hello ${
         user?.full_name || 'there'
-      }! I am Aegis, your AI medical assistant. How can I help you today?`,
+      }! I am Aegis, your AI clinical assistant. How can I assist with your health queries or emergency questions today?`,
       timestamp: new Date(),
     },
   ]);
@@ -80,7 +81,7 @@ export default function AIChatPage() {
 
     const nextHeight = Math.min(
       textareaRef.current.scrollHeight,
-      160
+      140
     );
 
     textareaRef.current.style.height = `${nextHeight}px`;
@@ -115,7 +116,7 @@ export default function AIChatPage() {
 
       const aiContent =
         response.data?.data?.reply ||
-        "I didn't receive a valid response.";
+        "I didn't receive a valid response from the clinical model.";
 
       const isEmergency =
         aiContent.includes('CRITICAL:') ||
@@ -135,7 +136,7 @@ export default function AIChatPage() {
       console.error('Failed to get AI response:', error);
 
       let errorContent =
-        'The AI service is temporarily unavailable. Please try again later or contact support.';
+        'The clinical assistant is temporarily unavailable. Please try again or utilize the Emergency SOS page if you need urgent care.';
 
       if (
         error?.response?.data?.detail?.includes(
@@ -143,7 +144,7 @@ export default function AIChatPage() {
         )
       ) {
         errorContent =
-          'The AI service is not configured correctly on the server. Please contact the administrator.';
+          'The AI service is not configured correctly on the server. Please contact your system administrator.';
       }
 
       const errorMessage: Message = {
@@ -185,259 +186,91 @@ export default function AIChatPage() {
     }, 20);
   };
 
-  /* ============================================================
-     COLORS
-     Explicit colors are used for message bubbles so they do not
-     disappear because of missing CSS variables.
-     ============================================================ */
-
-  const USER_BUBBLE = '#2563eb';
-  const USER_BUBBLE_BORDER = 'rgba(96, 165, 250, 0.45)';
-
-  const AI_BUBBLE = '#111c31';
-  const AI_BUBBLE_BORDER = 'rgba(71, 85, 105, 0.55)';
-
-  /* ============================================================
-     RENDER
-     ============================================================ */
-
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        width: '100%',
-        maxWidth: '980px',
-        height:
-          'calc(100vh - var(--navbar-height) - 48px)',
-        minHeight: '520px',
-        margin: '0 auto',
-        overflow: 'hidden',
-        boxSizing: 'border-box',
-      }}
-    >
+    <div className="flex flex-col w-full max-w-4xl mx-auto h-[calc(100vh-var(--navbar-height)-42px)] min-h-[500px] overflow-hidden">
       {/* ========================================================
           PAGE HEADER
           ======================================================== */}
+      <div className="flex items-center justify-between gap-4 mb-3 flex-shrink-0 pb-2 border-b border-[var(--border-color)]">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 flex-shrink-0 shadow-xs">
+            <Activity size={22} />
+          </div>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '14px',
-          marginBottom: '16px',
-          flexShrink: 0,
-        }}
-      >
-        {/* AI Icon */}
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-[var(--text-primary)] leading-tight">
+                AI Clinical Assistant
+              </h1>
+              <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Assistant Ready
+              </span>
+            </div>
 
-        <div
-          style={{
-            width: '50px',
-            height: '50px',
-            flexShrink: 0,
-            borderRadius: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background:
-              'linear-gradient(135deg, rgba(37,99,235,0.20), rgba(14,165,233,0.10))',
-            border:
-              '1px solid rgba(59,130,246,0.22)',
-            color: '#38bdf8',
-            boxShadow:
-              '0 8px 24px rgba(37,99,235,0.12)',
-          }}
-        >
-          <Activity size={25} strokeWidth={2} />
-        </div>
-
-        <div
-          style={{
-            minWidth: 0,
-          }}
-        >
-          <h1
-            style={{
-              margin: 0,
-              color: 'var(--text-primary)',
-              fontSize: '1.4rem',
-              fontWeight: 700,
-              lineHeight: 1.2,
-              letterSpacing: '-0.02em',
-            }}
-          >
-            Aegis AI
-          </h1>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '7px',
-              marginTop: '5px',
-              color: 'var(--text-muted)',
-              fontSize: '0.8rem',
-            }}
-          >
-            <span
-              style={{
-                width: '8px',
-                height: '8px',
-                flexShrink: 0,
-                borderRadius: '50%',
-                background: '#10b981',
-                boxShadow:
-                  '0 0 10px rgba(16,185,129,0.55)',
-              }}
-            />
-
-            <span>
-              Your Emergency Healthcare Assistant
-            </span>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              Decision support, clinical triage suggestions, and platform assistance
+            </p>
           </div>
         </div>
+
+        {messages.length > 1 && (
+          <button
+            type="button"
+            onClick={() =>
+              setMessages([
+                {
+                  id: '1',
+                  role: 'assistant',
+                  content: `Hello ${
+                    user?.full_name || 'there'
+                  }! How can I assist with your health queries today?`,
+                  timestamp: new Date(),
+                },
+              ])
+            }
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[var(--text-secondary)] bg-[var(--bg-tertiary)] border border-[var(--border-color)] hover:bg-[var(--bg-hover)] transition-colors"
+          >
+            <RotateCcw size={13} />
+            <span>Reset Chat</span>
+          </button>
+        )}
       </div>
 
       {/* ========================================================
           CHAT CARD
           ======================================================== */}
-
-      <div
-        style={{
-          flex: '1 1 0',
-          minHeight: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          borderRadius: '20px',
-          background:
-            'linear-gradient(180deg, rgba(9,18,34,0.98), rgba(6,13,26,0.98))',
-          border:
-            '1px solid rgba(51,65,85,0.75)',
-          boxShadow:
-            '0 20px 50px rgba(0,0,0,0.20)',
-        }}
-      >
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] shadow-xs">
         {/* ======================================================
             MESSAGE AREA
             ====================================================== */}
-
-        <div
-          style={{
-            flex: '1 1 0',
-            minHeight: 0,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            padding: '24px',
-            scrollbarWidth: 'thin',
-            boxSizing: 'border-box',
-          }}
-        >
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-5">
           {/* ====================================================
-              WELCOME SCREEN
+              WELCOME / SUGGESTIONS
               ==================================================== */}
-
           {messages.length === 1 && (
-            <div
-              style={{
-                textAlign: 'center',
-                marginTop: '8px',
-                marginBottom: '34px',
-              }}
-            >
-              <div
-                style={{
-                  width: '68px',
-                  height: '68px',
-                  margin: '0 auto 18px',
-                  borderRadius: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background:
-                    'rgba(37,99,235,0.12)',
-                  border:
-                    '1px solid rgba(59,130,246,0.22)',
-                  color: '#60a5fa',
-                }}
-              >
-                <Bot size={34} />
+            <div className="text-center my-4 max-w-xl mx-auto space-y-4">
+              <div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400">
+                <Bot size={28} />
               </div>
 
-              <h2
-                style={{
-                  margin: '0 0 8px',
-                  color: 'var(--text-primary)',
-                  fontSize: '1.2rem',
-                  fontWeight: 700,
-                }}
-              >
-                How can I help you today?
-              </h2>
+              <div>
+                <h2 className="text-base font-bold text-[var(--text-primary)]">
+                  How can I assist your clinical workflow?
+                </h2>
 
-              <p
-                style={{
-                  maxWidth: '430px',
-                  margin: '0 auto 24px',
-                  color: 'var(--text-muted)',
-                  fontSize: '0.875rem',
-                  lineHeight: 1.6,
-                }}
-              >
-                I can provide guidance on symptoms, first
-                aid, or help you navigate the Aegis
-                platform.
-              </p>
+                <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
+                  Ask regarding emergency first aid protocols, triage evaluations, or system capabilities.
+                </p>
+              </div>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns:
-                    'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: '10px',
-                  maxWidth: '650px',
-                  margin: '0 auto',
-                }}
-              >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pt-2">
                 {SUGGESTED_PROMPTS.map((prompt) => (
                   <button
                     key={prompt}
                     type="button"
-                    onClick={() =>
-                      handleSuggestedPrompt(prompt)
-                    }
-                    style={{
-                      padding: '13px 15px',
-                      borderRadius: '12px',
-                      border:
-                        '1px solid rgba(51,65,85,0.8)',
-                      background:
-                        'rgba(15,27,47,0.9)',
-                      color: '#a8bdd8',
-                      textAlign: 'left',
-                      fontSize: '0.84rem',
-                      lineHeight: 1.45,
-                      cursor: 'pointer',
-                      transition:
-                        'all 160ms ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background =
-                        'rgba(37,99,235,0.14)';
-                      e.currentTarget.style.borderColor =
-                        'rgba(59,130,246,0.45)';
-                      e.currentTarget.style.color =
-                        '#e5f0ff';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background =
-                        'rgba(15,27,47,0.9)';
-                      e.currentTarget.style.borderColor =
-                        'rgba(51,65,85,0.8)';
-                      e.currentTarget.style.color =
-                        '#a8bdd8';
-                    }}
+                    onClick={() => handleSuggestedPrompt(prompt)}
+                    className="p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-tertiary)] hover:border-blue-500/40 hover:bg-[var(--bg-hover)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all shadow-2xs text-left"
                   >
                     {prompt}
                   </button>
@@ -447,486 +280,114 @@ export default function AIChatPage() {
           )}
 
           {/* ====================================================
-              MESSAGES
+              MESSAGES LIST
               ==================================================== */}
-
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '22px',
-              width: '100%',
-            }}
-          >
+          <div className="space-y-4 w-full">
             {messages.map((msg) => {
               const isUser = msg.role === 'user';
 
               return (
                 <motion.div
                   key={msg.id}
-                  initial={{
-                    opacity: 0,
-                    y: 8,
-                  }}
-                  animate={{
-                    opacity: 1,
-                    y: 0,
-                  }}
-                  transition={{
-                    duration: 0.2,
-                  }}
-                  style={{
-                    display: 'flex',
-                    width: '100%',
-                    minWidth: 0,
-                    gap: '10px',
-                    alignItems: 'flex-start',
-                    justifyContent: isUser
-                      ? 'flex-end'
-                      : 'flex-start',
-                  }}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className={`flex items-start gap-2.5 w-full ${
+                    isUser ? 'justify-end' : 'justify-start'
+                  }`}
                 >
-                  {/* =================================================
-                      AI AVATAR
-                      ================================================= */}
-
+                  {/* AI AVATAR */}
                   {!isUser && (
-                    <div
-                      style={{
-                        width: '36px',
-                        height: '36px',
-                        flexShrink: 0,
-                        marginTop: '20px',
-                        borderRadius: '11px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background:
-                          'linear-gradient(135deg, #2563eb, #3b82f6)',
-                        color: '#ffffff',
-                        boxShadow:
-                          '0 5px 18px rgba(37,99,235,0.25)',
-                      }}
-                    >
-                      <Bot
-                        size={17}
-                        strokeWidth={2}
-                      />
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                      <Bot size={17} />
                     </div>
                   )}
 
-                  {/* =================================================
-                      MESSAGE CONTENT
-                      ================================================= */}
-
+                  {/* MESSAGE BODY */}
                   <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: isUser
-                        ? 'flex-end'
-                        : 'flex-start',
-                      minWidth: 0,
-                      maxWidth: isUser
-                        ? '78%'
-                        : '84%',
-                    }}
+                    className={`flex flex-col min-w-0 max-w-[85%] sm:max-w-[78%] ${
+                      isUser ? 'items-end' : 'items-start'
+                    }`}
                   >
-                    {/* AI NAME */}
-
-                    {!isUser && (
-                      <span
-                        style={{
-                          marginLeft: '3px',
-                          marginBottom: '5px',
-                          color: '#7f9abb',
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                        }}
-                      >
-                        Aegis AI
-                      </span>
-                    )}
-
-                    {/* =================================================
-                        ACTUAL MESSAGE BUBBLE
-                        ================================================= */}
+                    <span className="text-[11px] font-semibold text-[var(--text-muted)] mb-1 px-1">
+                      {isUser ? user?.full_name || 'You' : 'Aegis Clinical AI'}
+                    </span>
 
                     <div
-                      style={{
-                        width: 'fit-content',
-                        maxWidth: '100%',
-                        minWidth: isUser
-                          ? '70px'
-                          : '0',
-                        boxSizing: 'border-box',
-
-                        padding: isUser
-                          ? '12px 16px'
-                          : '14px 17px',
-
-                        borderRadius: isUser
-                          ? '18px 18px 5px 18px'
-                          : '18px 18px 18px 5px',
-
-                        background: isUser
-                          ? USER_BUBBLE
+                      className={`p-3.5 sm:p-4 rounded-2xl text-sm leading-relaxed break-words overflow-hidden shadow-xs ${
+                        isUser
+                          ? 'bg-[var(--primary-600)] text-white rounded-tr-xs'
                           : msg.isError
-                            ? 'rgba(127,29,29,0.22)'
-                            : msg.isEmergency
-                              ? 'rgba(127,29,29,0.24)'
-                              : AI_BUBBLE,
-
-                        border: isUser
-                          ? `1px solid ${USER_BUBBLE_BORDER}`
-                          : msg.isError
-                            ? '1px solid rgba(248,113,113,0.30)'
-                            : msg.isEmergency
-                              ? '1px solid rgba(251,113,133,0.40)'
-                              : `1px solid ${AI_BUBBLE_BORDER}`,
-
-                        boxShadow: isUser
-                          ? '0 8px 24px rgba(37,99,235,0.18)'
-                          : '0 5px 18px rgba(0,0,0,0.14)',
-
-                        color: isUser
-                          ? '#ffffff'
-                          : '#e8eef7',
-
-                        fontSize: '0.93rem',
-                        lineHeight: 1.65,
-
-                        overflowWrap:
-                          'anywhere',
-                        wordBreak:
-                          'break-word',
-                      }}
+                          ? 'bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-300 rounded-tl-xs'
+                          : msg.isEmergency
+                          ? 'bg-rose-500/10 border-2 border-rose-500/40 text-[var(--text-primary)] rounded-tl-xs'
+                          : 'bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-tl-xs'
+                      }`}
                     >
-                      {/* EMERGENCY LABEL */}
-
-                      {msg.isEmergency &&
-                        !msg.isError && (
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '7px',
-                              width: 'fit-content',
-                              marginBottom: '10px',
-                              padding: '6px 9px',
-                              borderRadius: '8px',
-                              background:
-                                'rgba(244,63,94,0.12)',
-                              border:
-                                '1px solid rgba(244,63,94,0.20)',
-                              color: '#fb7185',
-                              fontSize: '0.76rem',
-                              fontWeight: 700,
-                            }}
-                          >
-                            <AlertTriangle
-                              size={15}
-                            />
-                            CRITICAL ALERT
-                          </div>
-                        )}
-
-                      {/* ERROR LABEL */}
-
-                      {msg.isError && (
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            marginBottom: '8px',
-                            color: '#fb7185',
-                            fontSize: '0.78rem',
-                            fontWeight: 700,
-                          }}
-                        >
-                          <AlertTriangle
-                            size={14}
-                          />
-                          Service Issue
+                      {/* EMERGENCY ALERT BADGE */}
+                      {msg.isEmergency && !msg.isError && (
+                        <div className="inline-flex items-center gap-1.5 mb-2.5 px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-bold uppercase tracking-wider">
+                          <AlertTriangle size={14} />
+                          <span>Critical Emergency Guidance</span>
                         </div>
                       )}
 
-                      {/* USER MESSAGE */}
+                      {/* ERROR ALERT BADGE */}
+                      {msg.isError && (
+                        <div className="inline-flex items-center gap-1.5 mb-2 text-rose-600 dark:text-rose-400 text-xs font-bold">
+                          <AlertTriangle size={14} />
+                          <span>Service Notice</span>
+                        </div>
+                      )}
 
                       {isUser ? (
-                        <div
-                          style={{
-                            whiteSpace:
-                              'pre-wrap',
-                            color: '#ffffff',
-                            fontWeight: 500,
-                          }}
-                        >
+                        <div className="whitespace-pre-wrap font-normal">
                           {msg.content}
                         </div>
                       ) : (
-                        /* AI MARKDOWN */
-                        <div
-                          style={{
-                            minWidth: 0,
-                          }}
-                        >
+                        <div className="prose prose-sm dark:prose-invert max-w-none text-inherit text-[13.5px]">
                           <ReactMarkdown
                             components={{
-                              p: ({
-                                node: _node,
-                                ...props
-                              }) => (
-                                <p
-                                  style={{
-                                    margin:
-                                      '0 0 10px',
-                                    lineHeight: 1.65,
-                                  }}
-                                  {...props}
-                                />
+                              p: ({ node: _node, ...props }) => (
+                                <p className="mb-2 last:mb-0 leading-relaxed" {...props} />
                               ),
-
-                              ul: ({
-                                node: _node,
-                                ...props
-                              }) => (
-                                <ul
-                                  style={{
-                                    margin:
-                                      '6px 0 12px',
-                                    paddingLeft:
-                                      '22px',
-                                  }}
-                                  {...props}
-                                />
+                              ul: ({ node: _node, ...props }) => (
+                                <ul className="list-disc ml-5 mb-2 space-y-1" {...props} />
                               ),
-
-                              ol: ({
-                                node: _node,
-                                ...props
-                              }) => (
-                                <ol
-                                  style={{
-                                    margin:
-                                      '6px 0 12px',
-                                    paddingLeft:
-                                      '22px',
-                                  }}
-                                  {...props}
-                                />
+                              ol: ({ node: _node, ...props }) => (
+                                <ol className="list-decimal ml-5 mb-2 space-y-1" {...props} />
                               ),
-
-                              li: ({
-                                node: _node,
-                                ...props
-                              }) => (
-                                <li
-                                  style={{
-                                    marginBottom:
-                                      '5px',
-                                    lineHeight: 1.6,
-                                  }}
-                                  {...props}
-                                />
+                              li: ({ node: _node, ...props }) => (
+                                <li className="leading-snug" {...props} />
                               ),
-
-                              h1: ({
-                                node: _node,
-                                ...props
-                              }) => (
-                                <h1
-                                  style={{
-                                    margin:
-                                      '0 0 12px',
-                                    fontSize:
-                                      '1.2rem',
-                                    fontWeight: 700,
-                                    color:
-                                      '#ffffff',
-                                  }}
-                                  {...props}
-                                />
+                              h1: ({ node: _node, ...props }) => (
+                                <h1 className="text-base font-bold mb-2 text-[var(--text-primary)]" {...props} />
                               ),
-
-                              h2: ({
-                                node: _node,
-                                ...props
-                              }) => (
-                                <h2
-                                  style={{
-                                    margin:
-                                      '14px 0 9px',
-                                    fontSize:
-                                      '1.08rem',
-                                    fontWeight: 700,
-                                    color:
-                                      '#ffffff',
-                                  }}
-                                  {...props}
-                                />
+                              h2: ({ node: _node, ...props }) => (
+                                <h2 className="text-sm font-bold mb-1.5 text-[var(--text-primary)]" {...props} />
                               ),
-
-                              h3: ({
-                                node: _node,
-                                ...props
-                              }) => (
-                                <h3
-                                  style={{
-                                    margin:
-                                      '12px 0 8px',
-                                    fontSize:
-                                      '0.98rem',
-                                    fontWeight: 650,
-                                    color:
-                                      '#f1f5f9',
-                                  }}
-                                  {...props}
-                                />
+                              h3: ({ node: _node, ...props }) => (
+                                <h3 className="text-xs font-bold mb-1 text-[var(--text-primary)] uppercase tracking-wide" {...props} />
                               ),
-
-                              strong: ({
-                                node: _node,
-                                ...props
-                              }) => (
-                                <strong
-                                  style={{
-                                    color:
-                                      '#ffffff',
-                                    fontWeight: 700,
-                                  }}
-                                  {...props}
-                                />
+                              strong: ({ node: _node, ...props }) => (
+                                <strong className="font-bold text-[var(--text-primary)]" {...props} />
                               ),
-
-                              em: ({
-                                node: _node,
-                                ...props
-                              }) => (
-                                <em
-                                  style={{
-                                    color:
-                                      '#cbd5e1',
-                                  }}
-                                  {...props}
-                                />
-                              ),
-
-                              code: ({
-                                node: _node,
-                                inline,
-                                children,
-                                ...props
-                              }: any) => {
+                              code: ({ node: _node, inline, children, ...props }: any) => {
                                 if (inline) {
                                   return (
-                                    <code
-                                      style={{
-                                        padding:
-                                          '2px 6px',
-                                        borderRadius:
-                                          '5px',
-                                        background:
-                                          'rgba(2,6,23,0.65)',
-                                        border:
-                                          '1px solid rgba(71,85,105,0.5)',
-                                        color:
-                                          '#7dd3fc',
-                                        fontFamily:
-                                          'monospace',
-                                        fontSize:
-                                          '0.82rem',
-                                      }}
-                                      {...props}
-                                    >
+                                    <code className="px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] border border-[var(--border-color)] font-mono text-xs text-[var(--primary-500)]" {...props}>
                                       {children}
                                     </code>
                                   );
                                 }
-
                                 return (
-                                  <div
-                                    style={{
-                                      margin:
-                                        '12px 0',
-                                      padding:
-                                        '13px 15px',
-                                      overflowX:
-                                        'auto',
-                                      borderRadius:
-                                        '10px',
-                                      background:
-                                        'rgba(2,6,23,0.75)',
-                                      border:
-                                        '1px solid rgba(71,85,105,0.45)',
-                                    }}
-                                  >
-                                    <code
-                                      style={{
-                                        display:
-                                          'block',
-                                        color:
-                                          '#dbeafe',
-                                        fontFamily:
-                                          'monospace',
-                                        fontSize:
-                                          '0.81rem',
-                                        lineHeight:
-                                          1.55,
-                                        whiteSpace:
-                                          'pre',
-                                      }}
-                                      {...props}
-                                    >
-                                      {children}
-                                    </code>
+                                  <div className="p-3 my-2 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)] overflow-x-auto font-mono text-xs">
+                                    <code {...props}>{children}</code>
                                   </div>
                                 );
                               },
-
-                              a: ({
-                                node: _node,
-                                ...props
-                              }) => (
-                                <a
-                                  style={{
-                                    color:
-                                      '#60a5fa',
-                                    textDecoration:
-                                      'underline',
-                                    textUnderlineOffset:
-                                      '2px',
-                                    overflowWrap:
-                                      'anywhere',
-                                  }}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  {...props}
-                                />
-                              ),
-
-                              blockquote: ({
-                                node: _node,
-                                ...props
-                              }) => (
-                                <blockquote
-                                  style={{
-                                    margin:
-                                      '12px 0',
-                                    padding:
-                                      '7px 12px',
-                                    borderLeft:
-                                      '3px solid #3b82f6',
-                                    background:
-                                      'rgba(59,130,246,0.06)',
-                                    color:
-                                      '#b8c7d9',
-                                    borderRadius:
-                                      '0 7px 7px 0',
-                                  }}
-                                  {...props}
-                                />
+                              blockquote: ({ node: _node, ...props }) => (
+                                <blockquote className="pl-3 border-l-2 border-[var(--primary-500)] my-2 text-[var(--text-muted)] italic" {...props} />
                               ),
                             }}
                           >
@@ -936,313 +397,92 @@ export default function AIChatPage() {
                       )}
                     </div>
 
-                    {/* =================================================
-                        TIMESTAMP
-                        ================================================= */}
-
-                    <span
-                      style={{
-                        marginTop: '5px',
-                        padding:
-                          isUser
-                            ? '0 3px'
-                            : '0 3px',
-                        color: isUser
-                          ? '#6f9fe8'
-                          : '#667d9a',
-                        fontSize: '0.67rem',
-                        fontWeight: 500,
-                      }}
-                    >
-                      {msg.timestamp.toLocaleTimeString(
-                        [],
-                        {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        }
-                      )}
+                    <span className="text-[10px] text-[var(--text-muted)] mt-1 px-1">
+                      {msg.timestamp.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </span>
                   </div>
 
-                  {/* =================================================
-                      USER AVATAR
-                      ================================================= */}
-
+                  {/* USER AVATAR */}
                   {isUser && (
-                    <div
-                      style={{
-                        width: '36px',
-                        height: '36px',
-                        flexShrink: 0,
-                        marginTop: '20px',
-                        borderRadius: '11px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background:
-                          'linear-gradient(135deg, #059669, #10b981)',
-                        color: '#ffffff',
-                        boxShadow:
-                          '0 5px 18px rgba(16,185,129,0.18)',
-                      }}
-                    >
-                      <User
-                        size={17}
-                        strokeWidth={2}
-                      />
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1 bg-[var(--primary-600)] text-white shadow-xs">
+                      <User size={16} />
                     </div>
                   )}
                 </motion.div>
               );
             })}
 
-            {/* ======================================================
-                TYPING INDICATOR
-                ====================================================== */}
-
+            {/* TYPING INDICATOR */}
             {isTyping && (
               <motion.div
-                initial={{
-                  opacity: 0,
-                  y: 8,
-                }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px',
-                }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-2.5"
               >
-                <div
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    flexShrink: 0,
-                    marginTop: '20px',
-                    borderRadius: '11px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background:
-                      'linear-gradient(135deg, #2563eb, #3b82f6)',
-                    color: '#ffffff',
-                  }}
-                >
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                   <Bot size={17} />
                 </div>
 
-                <div>
-                  <span
-                    style={{
-                      display: 'block',
-                      marginBottom: '5px',
-                      marginLeft: '3px',
-                      color: '#7f9abb',
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                    }}
-                  >
-                    Aegis AI
+                <div className="flex flex-col items-start">
+                  <span className="text-[11px] font-semibold text-[var(--text-muted)] mb-1 px-1">
+                    Aegis Clinical AI
                   </span>
 
-                  <div
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '12px 16px',
-                      borderRadius:
-                        '18px 18px 18px 5px',
-                      background: AI_BUBBLE,
-                      border:
-                        `1px solid ${AI_BUBBLE_BORDER}`,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: '5px',
-                      }}
-                    >
-                      {[0, 0.2, 0.4].map(
-                        (delay, index) => (
-                          <motion.span
-                            key={index}
-                            style={{
-                              width: '7px',
-                              height: '7px',
-                              borderRadius: '50%',
-                              background:
-                                '#60a5fa',
-                            }}
-                            animate={{
-                              y: [0, -5, 0],
-                            }}
-                            transition={{
-                              repeat: Infinity,
-                              duration: 1,
-                              delay,
-                            }}
-                          />
-                        )
-                      )}
+                  <div className="p-3.5 rounded-2xl rounded-tl-xs bg-[var(--bg-tertiary)] border border-[var(--border-color)] flex items-center gap-2 text-xs text-[var(--text-muted)] font-medium">
+                    <div className="flex gap-1">
+                      {[0, 0.2, 0.4].map((delay, index) => (
+                        <motion.span
+                          key={index}
+                          className="w-1.5 h-1.5 rounded-full bg-[var(--primary-500)]"
+                          animate={{ y: [0, -4, 0] }}
+                          transition={{ repeat: Infinity, duration: 0.9, delay }}
+                        />
+                      ))}
                     </div>
-
-                    <span
-                      style={{
-                        color: '#91a4bc',
-                        fontSize: '0.82rem',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Thinking...
-                    </span>
+                    <span>Analyzing clinical query...</span>
                   </div>
                 </div>
               </motion.div>
             )}
 
-            <div
-              ref={messagesEndRef}
-              style={{
-                height: '4px',
-              }}
-            />
+            <div ref={messagesEndRef} className="h-2" />
           </div>
         </div>
 
         {/* ========================================================
-            COMPOSER
+            COMPOSER INPUT
             ======================================================== */}
-
-        <div
-          style={{
-            flexShrink: 0,
-            padding: '15px 20px 13px',
-            background:
-              'rgba(7,16,30,0.98)',
-            borderTop:
-              '1px solid rgba(51,65,85,0.65)',
-          }}
-        >
-          <form
-            onSubmit={handleSend}
-            style={{
-              display: 'flex',
-              width: '100%',
-              gap: '10px',
-              alignItems: 'flex-end',
-            }}
-          >
-            <div
-              style={{
-                position: 'relative',
-                flex: '1 1 0',
-                minWidth: 0,
-                borderRadius: '14px',
-                background:
-                  '#0d1a2d',
-                border:
-                  '1px solid rgba(71,85,105,0.7)',
-                boxShadow:
-                  'inset 0 1px 0 rgba(255,255,255,0.02)',
-              }}
-            >
+        <div className="p-3 sm:p-4 bg-[var(--bg-secondary)] border-t border-[var(--border-color)]">
+          <form onSubmit={handleSend} className="flex gap-2 items-end">
+            <div className="relative flex-1 min-w-0 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl focus-within:ring-2 focus-within:ring-[var(--primary-500)]/20 focus-within:border-[var(--primary-500)] transition-all">
               <textarea
                 ref={textareaRef}
                 value={input}
-                onChange={(e) =>
-                  setInput(e.target.value)
-                }
+                onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about symptoms, medical guidance, or how to use Aegis..."
+                placeholder="Ask about symptoms, emergency procedures, or platform queries..."
                 rows={1}
                 disabled={isTyping}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  minWidth: 0,
-                  maxHeight: '160px',
-                  boxSizing: 'border-box',
-                  padding:
-                    '12px 52px 12px 16px',
-                  resize: 'none',
-                  outline: 'none',
-                  border: 'none',
-                  background:
-                    'transparent',
-                  color:
-                    '#edf4ff',
-                  fontFamily: 'inherit',
-                  fontSize: '0.9rem',
-                  lineHeight: 1.55,
-                  overflowY: 'auto',
-                  scrollbarWidth: 'none',
-                }}
+                className="block w-full py-2.5 pl-3.5 pr-12 rounded-xl bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)] text-sm outline-none resize-none overflow-y-auto leading-relaxed"
               />
 
               <button
                 type="submit"
-                disabled={
-                  !input.trim() || isTyping
-                }
-                title="Send message"
-                style={{
-                  position: 'absolute',
-                  right: '7px',
-                  bottom: '7px',
-                  width: '36px',
-                  height: '36px',
-                  border: 'none',
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background:
-                    !input.trim() || isTyping
-                      ? '#17243a'
-                      : '#2563eb',
-                  color:
-                    !input.trim() || isTyping
-                      ? '#64748b'
-                      : '#ffffff',
-                  cursor:
-                    !input.trim() || isTyping
-                      ? 'not-allowed'
-                      : 'pointer',
-                  transition:
-                    'all 150ms ease',
-                }}
+                disabled={!input.trim() || isTyping}
+                title="Send query"
+                aria-label="Send message"
+                className="absolute right-1.5 bottom-1.5 w-8 h-8 rounded-lg flex items-center justify-center bg-[var(--primary-600)] text-white hover:bg-[var(--primary-500)] disabled:opacity-40 disabled:hover:bg-[var(--primary-600)] disabled:cursor-not-allowed transition-all shadow-xs"
               >
-                <Send size={16} />
+                <Send size={14} />
               </button>
             </div>
           </form>
 
-          <p
-            style={{
-              margin:
-                '9px 0 0',
-              textAlign: 'center',
-              color: '#64748b',
-              fontSize: '0.66rem',
-              lineHeight: 1.5,
-            }}
-          >
-            Aegis AI provides guidance based on
-            medical knowledge but can make mistakes.
-            For life-threatening emergencies,{' '}
-            <strong
-              style={{
-                color: '#fb7185',
-                fontWeight: 600,
-              }}
-            >
-              use the SOS button immediately.
-            </strong>
+          <p className="text-[11px] text-center text-[var(--text-muted)] mt-2">
+            Aegis AI offers automated clinical guidance and triage support. In active life hazards, trigger <strong className="text-rose-600 dark:text-rose-400 font-semibold">Emergency SOS</strong> immediately.
           </p>
         </div>
       </div>

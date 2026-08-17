@@ -102,6 +102,18 @@ const SettingsPage = React.lazy(
   () => import('@/features/settings/SettingsPage')
 );
 
+const LiveMapPage = React.lazy(
+  () => import('@/features/maps/LiveMapPage')
+);
+
+const PatientsPage = React.lazy(
+  () => import('@/features/patients/PatientsPage')
+);
+
+const UserManagementPage = React.lazy(
+  () => import('@/features/admin/UserManagementPage')
+);
+
 /* ============================================================
    LOADING FALLBACK
    ============================================================ */
@@ -308,11 +320,7 @@ export default function App() {
 
               <Route
                 path="/map"
-                element={
-                  <div className="p-8">
-                    Live Map (Coming Soon)
-                  </div>
-                }
+                element={<LiveMapPage />}
               />
 
               {/* ==================================================
@@ -322,9 +330,11 @@ export default function App() {
               <Route
                 path="/patients"
                 element={
-                  <div className="p-8">
-                    My Patients (Coming Soon)
-                  </div>
+                  <ProtectedRoute
+                    allowedRoles={['doctor', 'hospital_admin']}
+                  >
+                    <PatientsPage />
+                  </ProtectedRoute>
                 }
               />
 
@@ -352,7 +362,13 @@ export default function App() {
 
               <Route
                 path="/analytics"
-                element={<AnalyticsPage />}
+                element={
+                  <ProtectedRoute
+                    allowedRoles={['hospital_admin', 'government_admin']}
+                  >
+                    <AnalyticsPage />
+                  </ProtectedRoute>
+                }
               />
 
               {/* ==================================================
@@ -362,9 +378,11 @@ export default function App() {
               <Route
                 path="/admin/users"
                 element={
-                  <div className="p-8">
-                    User Management (Coming Soon)
-                  </div>
+                  <ProtectedRoute
+                    allowedRoles={['government_admin']}
+                  >
+                    <UserManagementPage />
+                  </ProtectedRoute>
                 }
               />
 

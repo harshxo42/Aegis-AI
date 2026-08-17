@@ -84,19 +84,21 @@ export default function EmergencyDetailsPage() {
           setLoading(true);
         }
 
-        /*
-         * We use the existing emergency list API because the current
-         * project already exposes emergenciesAPI.list().
-         *
-         * The requested emergency is then selected by ID.
-         */
+        try {
+          const directRes = await emergenciesAPI.getById(id);
+          const directData = directRes?.data?.data || directRes?.data;
+          if (directData && String(directData.id) === String(id)) {
+            setEmergency(directData);
+            setError('');
+            return;
+          }
+        } catch {
+          // Fallback to searching the list if single endpoint is restricted
+        }
+
         const response = await emergenciesAPI.list({});
-
-        const rawData = response?.data?.data;
-
-        const data: EmergencyRequest[] = Array.isArray(rawData)
-          ? rawData
-          : [];
+        const rawData = response?.data?.data || response?.data;
+        const data: EmergencyRequest[] = Array.isArray(rawData) ? rawData : [];
 
         const found = data.find(
           (item) => String(item.id) === String(id)

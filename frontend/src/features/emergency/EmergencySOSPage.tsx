@@ -180,9 +180,16 @@ export default function EmergencySOSPage() {
         response.data?.message || 'Emergency request registered. Responders alerted.'
       );
 
-      navigate('/emergencies', {
-        replace: true,
-      });
+      const createdId = response.data?.data?.id;
+      if (createdId) {
+        navigate(`/emergencies/${createdId}`, {
+          replace: true,
+        });
+      } else {
+        navigate('/emergencies', {
+          replace: true,
+        });
+      }
     } catch (error: any) {
       console.error('Emergency error:', error);
       toast.error(

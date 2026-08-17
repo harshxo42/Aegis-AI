@@ -1,20 +1,24 @@
 /**
- * Aegis AI – Analytics Dashboard
+ * Aegis AI – Analytics & Operations Command Dashboard
  *
- * Real-time city-wide emergency statistics and hospital capacity heat maps.
+ * Real-time city-wide emergency metrics, volume trends, and hospital ICU capacity analytics.
  */
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  BarChart3, Activity, Truck, Building2, 
-  TrendingUp, ChevronDown 
+import {
+  BarChart3,
+  Activity,
+  Truck,
+  Building2,
+  Clock,
 } from 'lucide-react';
 import { analyticsAPI } from '@/api/client';
 
 export default function AnalyticsPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '24h'>('7d');
 
   useEffect(() => {
     fetchData();
@@ -26,7 +30,7 @@ export default function AnalyticsPage() {
       const res = await analyticsAPI.getDashboard();
       setData(res.data.data);
     } catch (error) {
-      console.error(error);
+      console.error('[Aegis AI] Analytics fetch error:', error);
     } finally {
       setLoading(false);
     }
@@ -34,13 +38,14 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-full">
-        <div className="w-10 h-10 border-4 border-[var(--primary-500)] border-t-transparent rounded-full animate-spin" />
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-3">
+        <div className="w-10 h-10 border-3 border-[var(--primary-500)] border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-semibold text-[var(--text-muted)]">Loading Healthcare Telemetry...</p>
       </div>
     );
   }
 
-  // Fallback mock data if backend doesn't return everything yet
+  // Preserve existing fallback schema
   const stats = data || {
     total_emergencies: 142,
     active_emergencies: 24,
@@ -58,140 +63,244 @@ export default function AnalyticsPage() {
     { day: 'Sat', value: 70 },
     { day: 'Sun', value: 55 },
   ];
-  
-  const maxTrend = Math.max(...trendData.map(d => d.value));
+
+  const maxTrend = Math.max(...trendData.map((d) => d.value));
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-2">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-[var(--primary-500)]/10 text-[var(--primary-400)] shadow-[0_0_20px_rgba(59,130,246,0.15)]">
+    <div className="space-y-6 pb-8">
+      {/* PAGE HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border-color)]">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-xs flex-shrink-0">
             <BarChart3 size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">City Analytics</h1>
-            <p className="text-gray-400 text-sm mt-1">Real-time health infrastructure overview</p>
+            <h1 className="text-2xl font-bold text-[var(--text-primary)] leading-tight">
+              City Health Operations Analytics
+            </h1>
+            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-0.5">
+              Live healthcare infrastructure telemetry, emergency dispatch volume, and ICU readiness
+            </p>
           </div>
         </div>
-        
-        <div className="glass-card px-4 py-2 flex items-center gap-2 cursor-pointer hover:bg-[var(--bg-hover)]">
-          <span className="text-sm font-medium">Last 7 Days</span>
-          <ChevronDown size={16} className="text-gray-400" />
+
+        {/* TIME RANGE SELECTOR */}
+        <div className="inline-flex items-center p-1 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)] self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setTimeRange('24h')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              timeRange === '24h'
+                ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            24 Hours
+          </button>
+          <button
+            type="button"
+            onClick={() => setTimeRange('7d')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              timeRange === '7d'
+                ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            Last 7 Days
+          </button>
+          <button
+            type="button"
+            onClick={() => setTimeRange('30d')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              timeRange === '30d'
+                ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            Last 30 Days
+          </button>
         </div>
       </div>
 
-      {/* Top Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* TOP KPI CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Active Emergencies', value: stats.active_emergencies, icon: <Activity size={24}/>, color: 'text-rose-400', bg: 'bg-rose-500/10' },
-          { label: 'Total Hospitals', value: stats.total_hospitals, icon: <Building2 size={24}/>, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-          { label: 'Available Ambulances', value: stats.available_ambulances, icon: <Truck size={24}/>, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-          { label: 'Avg. Response Time', value: '8.4m', icon: <TrendingUp size={24}/>, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+          {
+            label: 'Active Critical Incidents',
+            value: stats.active_emergencies,
+            subtext: `${stats.total_emergencies || 142} total recorded`,
+            icon: <Activity size={22} />,
+            color: 'text-rose-600 dark:text-rose-400',
+            bg: 'bg-rose-500/10 border-rose-500/20',
+          },
+          {
+            label: 'Active Hospital Network',
+            value: stats.total_hospitals,
+            subtext: 'Integrated medical centers',
+            icon: <Building2 size={22} />,
+            color: 'text-blue-600 dark:text-blue-400',
+            bg: 'bg-blue-500/10 border-blue-500/20',
+          },
+          {
+            label: 'Available EMS Units',
+            value: stats.available_ambulances,
+            subtext: 'Ready for instant dispatch',
+            icon: <Truck size={22} />,
+            color: 'text-emerald-600 dark:text-emerald-400',
+            bg: 'bg-emerald-500/10 border-emerald-500/20',
+          },
+          {
+            label: 'Average Response Time',
+            value: '8.4 min',
+            subtext: 'Optimal emergency SLA',
+            icon: <Clock size={22} />,
+            color: 'text-amber-600 dark:text-amber-400',
+            bg: 'bg-amber-500/10 border-amber-500/20',
+          },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="glass-card p-6 flex items-center gap-4"
+            transition={{ delay: i * 0.04 }}
+            className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-5 shadow-xs flex items-center justify-between gap-3"
           >
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${stat.bg} ${stat.color}`}>
-              {stat.icon}
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] truncate">
+                {stat.label}
+              </p>
+              <h3 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mt-1">
+                {stat.value}
+              </h3>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-1 font-medium">
+                {stat.subtext}
+              </p>
             </div>
-            <div>
-              <p className="text-gray-400 text-sm font-medium mb-1">{stat.label}</p>
-              <h3 className="text-3xl font-bold text-white">{stat.value}</h3>
+
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 border ${stat.bg} ${stat.color}`}>
+              {stat.icon}
             </div>
           </motion.div>
         ))}
       </div>
 
+      {/* CHARTS SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Trend Chart */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
+        {/* TREND CHART */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="glass-card p-6 lg:col-span-2 flex flex-col"
+          className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-5 sm:p-6 shadow-xs lg:col-span-2 flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6 pb-4 border-b border-[var(--border-color)]">
             <div>
-              <h2 className="text-lg font-bold">Emergency Volume Trends</h2>
-              <p className="text-sm text-gray-400 mt-1">Number of SOS requests per day</p>
+              <h2 className="text-base font-bold text-[var(--text-primary)]">
+                Emergency Dispatch Volume Trends
+              </h2>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                Daily recorded SOS triage and critical care requests
+              </p>
             </div>
-            <div className="flex gap-2">
-              <span className="w-3 h-3 rounded-full bg-[var(--primary-500)] mt-1" />
-              <span className="text-sm text-gray-300">Requests</span>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <span className="w-2.5 h-2.5 rounded-full bg-[var(--primary-600)]" />
+              <span className="text-xs font-semibold text-[var(--text-secondary)]">
+                Incident Volume
+              </span>
             </div>
           </div>
-          
-          <div className="flex-1 flex items-end gap-2 sm:gap-6 h-64 mt-auto">
+
+          {/* BAR CHART DISPLAY */}
+          <div className="flex-1 flex items-end gap-2 sm:gap-6 h-64 pt-6 pb-2">
             {trendData.map((d, i) => {
               const height = `${(d.value / maxTrend) * 100}%`;
               return (
-                <div key={i} className="flex-1 flex flex-col items-center justify-end gap-3 group h-full">
+                <div
+                  key={i}
+                  className="flex-1 flex flex-col items-center justify-end gap-2.5 group h-full relative"
+                >
                   <div className="w-full relative flex items-end h-full bg-[var(--bg-tertiary)] rounded-t-lg overflow-hidden border border-[var(--border-color)] border-b-0">
-                    <motion.div 
+                    <motion.div
                       initial={{ height: 0 }}
                       animate={{ height }}
-                      transition={{ duration: 1, delay: i * 0.1, type: 'spring' }}
-                      className="w-full bg-gradient-to-t from-[var(--primary-600)] to-[var(--primary-400)] rounded-t-md group-hover:brightness-125 transition-all"
+                      transition={{ duration: 0.8, delay: i * 0.08, ease: 'easeOut' }}
+                      className="w-full bg-[var(--primary-600)] hover:bg-[var(--primary-500)] rounded-t-md transition-colors"
                     />
+
                     {/* Tooltip */}
-                    <div className="absolute top-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-white text-xs py-1 px-2 rounded font-bold z-10 pointer-events-none">
-                      {d.value}
+                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] text-[11px] py-0.5 px-2 rounded-md font-bold shadow-md z-10 pointer-events-none whitespace-nowrap">
+                      {d.value} calls
                     </div>
                   </div>
-                  <span className="text-xs text-gray-400 font-medium uppercase">{d.day}</span>
+                  <span className="text-xs text-[var(--text-muted)] font-bold uppercase">
+                    {d.day}
+                  </span>
                 </div>
               );
             })}
           </div>
         </motion.div>
 
-        {/* Capacity Overview */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
+        {/* ICU CAPACITY OVERVIEW */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-          className="glass-card p-6 flex flex-col"
+          transition={{ delay: 0.1 }}
+          className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between"
         >
-          <h2 className="text-lg font-bold mb-1">City ICU Capacity</h2>
-          <p className="text-sm text-gray-400 mb-6">Real-time aggregate occupancy</p>
+          <div className="pb-4 mb-4 border-b border-[var(--border-color)]">
+            <h2 className="text-base font-bold text-[var(--text-primary)]">
+              City-Wide ICU Capacity
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              Aggregate critical care bed utilization rate
+            </p>
+          </div>
 
-          <div className="flex-1 flex flex-col items-center justify-center relative min-h-[250px]">
-            {/* Donut Chart Approximation with CSS */}
-            <div className="w-48 h-48 rounded-full relative flex items-center justify-center shadow-[0_0_40px_rgba(239,68,68,0.1)]" style={{ background: `conic-gradient(var(--danger-500) ${stats.icu_occupancy_rate}%, var(--bg-tertiary) 0)` }}>
-              <div className="w-36 h-36 rounded-full bg-[var(--bg-secondary)] flex flex-col items-center justify-center shadow-inner z-10">
-                <span className="text-4xl font-bold text-white">{stats.icu_occupancy_rate}%</span>
-                <span className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-wider">Occupied</span>
+          <div className="flex flex-col items-center justify-center my-auto">
+            {/* CONIC DONUT */}
+            <div
+              className="w-44 h-44 rounded-full relative flex items-center justify-center shadow-xs"
+              style={{
+                background: `conic-gradient(var(--danger-500) ${stats.icu_occupancy_rate}%, var(--bg-tertiary) 0)`,
+              }}
+            >
+              <div className="w-32 h-32 rounded-full bg-[var(--bg-card)] flex flex-col items-center justify-center shadow-xs border border-[var(--border-color)]">
+                <span className="text-3xl font-bold text-[var(--text-primary)]">
+                  {stats.icu_occupancy_rate}%
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider mt-0.5">
+                  Occupancy
+                </span>
               </div>
             </div>
-            
-            <div className="mt-8 w-full space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-gray-300">
-                  <span className="w-3 h-3 rounded-full bg-rose-500" /> Critical (&gt;90%)
+
+            {/* STATUS BREAKDOWN */}
+            <div className="mt-6 w-full space-y-2.5">
+              <div className="flex items-center justify-between text-xs p-2 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)]">
+                <span className="flex items-center gap-2 font-medium text-[var(--text-secondary)]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Critical (&gt;90%)
                 </span>
-                <span className="font-bold">4 Hospitals</span>
+                <span className="font-bold text-[var(--text-primary)]">4 Facilities</span>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-gray-300">
-                  <span className="w-3 h-3 rounded-full bg-amber-500" /> High (75-90%)
+
+              <div className="flex items-center justify-between text-xs p-2 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)]">
+                <span className="flex items-center gap-2 font-medium text-[var(--text-secondary)]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> High (75–90%)
                 </span>
-                <span className="font-bold">6 Hospitals</span>
+                <span className="font-bold text-[var(--text-primary)]">6 Facilities</span>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-gray-300">
-                  <span className="w-3 h-3 rounded-full bg-emerald-500" /> Normal (&lt;75%)
+
+              <div className="flex items-center justify-between text-xs p-2 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)]">
+                <span className="flex items-center gap-2 font-medium text-[var(--text-secondary)]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Nominal (&lt;75%)
                 </span>
-                <span className="font-bold">5 Hospitals</span>
+                <span className="font-bold text-[var(--text-primary)]">5 Facilities</span>
               </div>
             </div>
           </div>
         </motion.div>
       </div>
-
     </div>
   );
 }

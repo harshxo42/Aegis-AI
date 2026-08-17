@@ -9,19 +9,11 @@ import { motion } from 'framer-motion';
 import { Truck, MapPin, Navigation, CheckCircle, AlertTriangle } from 'lucide-react';
 
 import Map from '@/components/maps/Map';
-import { hospitalIcon } from '@/components/maps/MapIcons';
+import { ambulanceIcon, emergencyIcon } from '@/components/maps/MapIcons';
 import { Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
 import { emergenciesAPI } from '@/api/client';
 import type { EmergencyRequest } from '@/types';
 import { toast } from 'react-hot-toast';
-
-const ambulanceIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-});
 
 export default function AmbulanceDashboardPage() {
   const [activeEmergency, setActiveEmergency] = useState<EmergencyRequest | null>(null);
@@ -202,8 +194,8 @@ export default function AmbulanceDashboardPage() {
 
             {/* Emergency Location */}
             {activeEmergency && activeEmergency.location_lat && activeEmergency.location_lng && (
-              <Marker position={[activeEmergency.location_lat, activeEmergency.location_lng]} icon={hospitalIcon}>
-                <Popup>Patient Location</Popup>
+              <Marker position={[activeEmergency.location_lat, activeEmergency.location_lng]} icon={emergencyIcon}>
+                <Popup>Emergency Incident Location</Popup>
               </Marker>
             )}
           </Map>
