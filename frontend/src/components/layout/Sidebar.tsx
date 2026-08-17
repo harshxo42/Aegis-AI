@@ -226,8 +226,8 @@ export default function Sidebar() {
       <div className="aegis-sidebar-brand">
         <div className="aegis-brand-logo">
           <Shield
-            size={25}
-            strokeWidth={2}
+            size={22}
+            strokeWidth={2.2}
             color="#ffffff"
           />
         </div>

@@ -1,13 +1,13 @@
 /**
  * Aegis AI – Dashboard
  *
- * Main emergency-response dashboard.
- * - Role based statistics
+ * Professional healthcare operations and emergency response command dashboard.
+ * - Role-based statistics
  * - Emergency status
- * - Quick actions
- * - Recent emergencies
- * - Loading / error handling
- * - Responsive friendly
+ * - Quick operational shortcuts
+ * - Recent emergencies monitor
+ * - High-contrast Light & Dark theme support
+ * - Responsive layout (320px to 1440px+)
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -40,11 +40,10 @@ const containerVariants = {
   hidden: {
     opacity: 0,
   },
-
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.06,
+      staggerChildren: 0.05,
     },
   },
 };
@@ -52,14 +51,13 @@ const containerVariants = {
 const itemVariants = {
   hidden: {
     opacity: 0,
-    y: 20,
+    y: 12,
   },
-
   visible: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.5,
+      duration: 0.35,
     },
   },
 };
@@ -67,31 +65,19 @@ const itemVariants = {
 export default function DashboardPage() {
   const navigate = useNavigate();
 
-  const { user } = useAppSelector(
-    (state) => state.auth
-  );
+  const { user } = useAppSelector((state) => state.auth);
 
-  const [stats, setStats] =
-    useState<DashboardStats>({});
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState(false);
+  const [stats, setStats] = useState<DashboardStats>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   /* ============================================================
      USER / ROLE
      ============================================================ */
 
   const role = user?.role || 'patient';
-
-  const isPatient =
-    role === 'patient';
-
-  const isAdmin =
-    role === 'hospital_admin' ||
-    role === 'government_admin';
+  const isPatient = role === 'patient';
+  const isAdmin = role === 'hospital_admin' || role === 'government_admin';
 
   /* ============================================================
      GREETING
@@ -99,122 +85,84 @@ export default function DashboardPage() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-
-    if (hour < 12) {
-      return 'Good Morning';
-    }
-
-    if (hour < 17) {
-      return 'Good Afternoon';
-    }
-
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
     return 'Good Evening';
   };
 
-  const firstName =
-    user?.full_name
-      ?.trim()
-      ?.split(/\s+/)[0] || 'User';
+  const firstName = user?.full_name?.trim()?.split(/\s+/)[0] || 'User';
 
   /* ============================================================
      FETCH DASHBOARD DATA
      ============================================================ */
 
-  const fetchStats = useCallback(
-    async () => {
-      setLoading(true);
-      setError(false);
+  const fetchStats = useCallback(async () => {
+    setLoading(true);
+    setError(false);
 
-      try {
-        const response =
-          await analyticsAPI.getDashboard();
-
-        setStats(
-          response?.data?.data || {}
-        );
-      } catch (err) {
-        console.error(
-          'Failed to fetch dashboard stats:',
-          err
-        );
-
-        setError(true);
-        setStats({});
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+    try {
+      const response = await analyticsAPI.getDashboard();
+      setStats(response?.data?.data || {});
+    } catch (err) {
+      console.error('Failed to fetch dashboard stats:', err);
+      setError(true);
+      setStats({});
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
 
   /* ============================================================
-     STATISTICS
+     STATISTICS CONFIGURATION
      ============================================================ */
 
   const adminStats = useMemo(
     () => [
       {
         label: 'Total Hospitals',
-        value:
-          stats.total_hospitals || 0,
-        icon: <Building2 size={22} />,
-        color: '#3b82f6',
-        gradient:
-          'linear-gradient(135deg, #3b82f6, #2563eb)',
+        value: stats.total_hospitals || 0,
+        subtext: 'Registered centers',
+        icon: <Building2 size={20} />,
+        accentClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
       },
-
       {
         label: 'Available Beds',
-        value:
-          stats.total_available_beds || 0,
-        icon: <Bed size={22} />,
-        color: '#10b981',
-        gradient:
-          'linear-gradient(135deg, #10b981, #059669)',
+        value: stats.total_available_beds || 0,
+        subtext: 'Across all centers',
+        icon: <Bed size={20} />,
+        accentClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
       },
-
       {
         label: 'Active Emergencies',
-        value:
-          stats.active_emergencies || 0,
-        icon: <AlertTriangle size={22} />,
-        color: '#f43f5e',
-        gradient:
-          'linear-gradient(135deg, #f43f5e, #e11d48)',
+        value: stats.active_emergencies || 0,
+        subtext: 'In progress',
+        icon: <AlertTriangle size={20} />,
+        accentClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
       },
-
       {
-        label: 'Ambulances Available',
-        value:
-          stats.available_ambulances || 0,
-        icon: <Ambulance size={22} />,
-        color: '#f59e0b',
-        gradient:
-          'linear-gradient(135deg, #f59e0b, #d97706)',
+        label: 'Ambulances Ready',
+        value: stats.available_ambulances || 0,
+        subtext: 'Ready for dispatch',
+        icon: <Ambulance size={20} />,
+        accentClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
       },
-
       {
         label: 'ICU Available',
-        value:
-          stats.total_icu_available || 0,
-        icon: <HeartPulse size={22} />,
-        color: '#8b5cf6',
-        gradient:
-          'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+        value: stats.total_icu_available || 0,
+        subtext: 'Critical care beds',
+        icon: <HeartPulse size={20} />,
+        accentClass: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
       },
-
       {
         label: 'Total Users',
-        value:
-          stats.total_users || 0,
-        icon: <Users size={22} />,
-        color: '#06b6d4',
-        gradient:
-          'linear-gradient(135deg, #06b6d4, #0891b2)',
+        value: stats.total_users || 0,
+        subtext: 'Active accounts',
+        icon: <Users size={20} />,
+        accentClass: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20',
       },
     ],
     [stats]
@@ -224,22 +172,17 @@ export default function DashboardPage() {
     () => [
       {
         label: 'My Emergencies',
-        value:
-          stats.total_emergencies || 0,
-        icon: <Ambulance size={22} />,
-        color: '#3b82f6',
-        gradient:
-          'linear-gradient(135deg, #3b82f6, #2563eb)',
+        value: stats.total_emergencies || 0,
+        subtext: 'Submitted requests',
+        icon: <Ambulance size={20} />,
+        accentClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
       },
-
       {
         label: 'Nearby Hospitals',
-        value:
-          stats.nearby_hospitals || 0,
-        icon: <Building2 size={22} />,
-        color: '#8b5cf6',
-        gradient:
-          'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+        value: stats.nearby_hospitals || 0,
+        subtext: 'Within service radius',
+        icon: <Building2 size={20} />,
+        accentClass: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
       },
     ],
     [stats]
@@ -252,100 +195,57 @@ export default function DashboardPage() {
       : adminStats.slice(0, 4);
 
   /* ============================================================
-     QUICK ACTIONS
+     QUICK ACTIONS CONFIGURATION
      ============================================================ */
 
   const quickActions = useMemo(() => {
     const actions = [
       {
         label: 'Find Hospital',
-        description:
-          'Locate nearby medical centers',
-        icon: <Building2 size={20} />,
+        description: 'Locate medical centers & availability',
+        icon: <Building2 size={18} />,
         path: '/hospitals',
-        color: '#3b82f6',
-        gradient:
-          'linear-gradient(135deg, #3b82f6, #2563eb)',
-        roles: [
-          'patient',
-          'doctor',
-          'hospital_admin',
-          'government_admin',
-        ],
+        accentClass: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+        roles: ['patient', 'doctor', 'hospital_admin', 'government_admin'],
       },
-
       {
         label: 'AI Predictions',
-        description:
-          'Assess symptoms & triage',
-        icon: <TrendingUp size={20} />,
+        description: 'Assess symptoms & triage guidance',
+        icon: <TrendingUp size={18} />,
         path: '/ai/predictions',
-        color: '#8b5cf6',
-        gradient:
-          'linear-gradient(135deg, #8b5cf6, #7c3aed)',
-        roles: [
-          'patient',
-          'doctor',
-          'hospital_admin',
-        ],
+        accentClass: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+        roles: ['patient', 'doctor', 'hospital_admin'],
       },
-
       {
-        label: 'View Map',
-        description:
-          'Live tracking & facilities',
-        icon: <MapPin size={20} />,
+        label: 'Live Map',
+        description: 'Emergency routing & facilities map',
+        icon: <MapPin size={18} />,
         path: '/map',
-        color: '#10b981',
-        gradient:
-          'linear-gradient(135deg, #10b981, #059669)',
-        roles: [
-          'patient',
-          'ambulance_driver',
-          'hospital_admin',
-          'government_admin',
-        ],
+        accentClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+        roles: ['patient', 'ambulance_driver', 'hospital_admin', 'government_admin'],
       },
-
       {
         label: 'AI Chat',
-        description:
-          'Talk with Aegis AI',
-        icon: <MessageSquare size={20} />,
+        description: 'Consult with Aegis AI assistant',
+        icon: <MessageSquare size={18} />,
         path: '/ai/chat',
-        color: '#6366f1',
-        gradient:
-          'linear-gradient(135deg, #6366f1, #4f46e5)',
-        roles: [
-          'patient',
-          'doctor',
-        ],
+        accentClass: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+        roles: ['patient', 'doctor'],
       },
-
       {
         label: 'Medical Reports',
-        description:
-          'View your medical records',
-        icon: <FileText size={20} />,
+        description: 'Access diagnostic records & analysis',
+        icon: <FileText size={18} />,
         path: '/reports',
-        color: '#06b6d4',
-        gradient:
-          'linear-gradient(135deg, #06b6d4, #0891b2)',
-        roles: [
-          'patient',
-          'doctor',
-        ],
+        accentClass: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20',
+        roles: ['patient', 'doctor'],
       },
-
       {
         label: 'Notifications',
-        description:
-          'Recent alerts & updates',
-        icon: <Clock size={20} />,
+        description: 'System alerts & emergency updates',
+        icon: <Clock size={18} />,
         path: '/notifications',
-        color: '#f59e0b',
-        gradient:
-          'linear-gradient(135deg, #f59e0b, #d97706)',
+        accentClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
         roles: [
           'patient',
           'doctor',
@@ -356,27 +256,76 @@ export default function DashboardPage() {
       },
     ];
 
-    return actions.filter((action) =>
-      action.roles.includes(role)
-    );
+    return actions.filter((action) => action.roles.includes(role));
   }, [role]);
 
   /* ============================================================
      HELPERS
      ============================================================ */
 
-  const formatStatus = (
-    status?: string
-  ) => {
-    if (!status) {
-      return 'Unknown';
-    }
+  const formatStatus = (status?: string) => {
+    if (!status) return 'Unknown';
+    return status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  };
 
-    return status
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (char) =>
-        char.toUpperCase()
+  const getSeverityBadge = (severity: number) => {
+    if (severity >= 4) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+          Level {severity} Critical
+        </span>
       );
+    }
+    if (severity === 3) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+          Level {severity} Moderate
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+        Level {severity} Low
+      </span>
+    );
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'requested':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+            {formatStatus(status)}
+          </span>
+        );
+      case 'dispatched':
+      case 'en_route':
+      case 'arrived':
+      case 'in_treatment':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+            {formatStatus(status)}
+          </span>
+        );
+      case 'resolved':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+            {formatStatus(status)}
+          </span>
+        );
+      case 'cancelled':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+            {formatStatus(status)}
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border-color)]">
+            {formatStatus(status)}
+          </span>
+        );
+    }
   };
 
   /* ============================================================
@@ -385,442 +334,316 @@ export default function DashboardPage() {
 
   return (
     <motion.div
-      className="dashboard-page"
+      className="space-y-6 max-w-7xl mx-auto pb-10"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
-      <div className="dashboard-inner">
+      {/* ======================================================
+          PAGE HEADER
+      ====================================================== */}
+      <motion.section
+        variants={itemVariants}
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-5"
+      >
+        <div>
+          <span className="text-xs font-bold uppercase tracking-wider text-[var(--primary-500)] block mb-1">
+            Operations Overview
+          </span>
 
-        {/* ======================================================
-            PAGE HEADER
-        ====================================================== */}
-
-        <motion.section
-          variants={itemVariants}
-          className="dashboard-header"
-        >
-          <div className="dashboard-heading">
-
-            <span className="dashboard-page-title">
-              DASHBOARD
+          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+            {getGreeting()}, {firstName}
+            <span className="text-xl" aria-hidden="true">
+              👋
             </span>
+          </h1>
 
-            <div className="dashboard-title-row">
-              <h1>
-                {getGreeting()}, {firstName}
+          <p className="text-sm text-[var(--text-muted)] mt-1">
+            Real-time emergency coordination and hospital infrastructure metrics.
+          </p>
+        </div>
 
-                <span
-                  className="dashboard-wave"
-                  aria-hidden="true"
-                >
-                  👋
-                </span>
-              </h1>
+        <div className="flex items-center gap-3">
+          {isPatient && (
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate('/emergency')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white bg-rose-600 hover:bg-rose-500 shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+            >
+              <Phone size={17} />
+              <span>SOS Emergency</span>
+            </motion.button>
+          )}
+
+          <button
+            type="button"
+            onClick={fetchStats}
+            title="Refresh dashboard metrics"
+            disabled={loading}
+            className="p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all disabled:opacity-50"
+            aria-label="Refresh dashboard"
+          >
+            <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </motion.section>
+
+      {/* ======================================================
+          ERROR STATE
+      ====================================================== */}
+      {error && (
+        <motion.div
+          variants={itemVariants}
+          className="p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={20} className="flex-shrink-0" />
+            <div>
+              <strong className="text-sm block">Unable to load dashboard data</strong>
+              <p className="text-xs opacity-90">Please check your connection and try again.</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={fetchStats}
+            className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-rose-500/40 bg-white dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/50 transition-colors"
+          >
+            Retry
+          </button>
+        </motion.div>
+      )}
+
+      {/* ======================================================
+          ACTIVE EMERGENCY BANNER (PATIENT)
+      ====================================================== */}
+      {isPatient && stats.active_emergency && (
+        <motion.button
+          type="button"
+          variants={itemVariants}
+          whileHover={{ scale: 1.005 }}
+          whileTap={{ scale: 0.995 }}
+          onClick={() => navigate('/emergencies')}
+          className="w-full text-left p-4 sm:p-5 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/15 transition-all flex items-center justify-between gap-4 shadow-xs group"
+        >
+          <div className="flex items-start gap-4 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-rose-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+              <AlertTriangle size={22} className="animate-pulse" />
             </div>
 
-            <p>
-              Here's your emergency response
-              overview for today
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                  Active Emergency In Progress
+                </span>
+              </div>
+
+              <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] mt-0.5 truncate">
+                Emergency Request Active
+              </h3>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-secondary)] mt-1.5">
+                <span>Status:</span>
+                <strong className="text-[var(--text-primary)]">
+                  {formatStatus(stats.active_emergency.status)}
+                </strong>
+                <span>•</span>
+                <span>Severity:</span>
+                <strong className="text-[var(--text-primary)]">
+                  {stats.active_emergency.severity} / 5
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 text-sm font-semibold text-rose-600 dark:text-rose-400 group-hover:translate-x-1 transition-transform flex-shrink-0">
+            <span>View Details</span>
+            <ChevronRight size={18} />
+          </div>
+        </motion.button>
+      )}
+
+      {/* ======================================================
+          STATISTICS CARDS
+      ====================================================== */}
+      <motion.section variants={itemVariants}>
+        <div
+          className={`grid gap-4 ${
+            isPatient
+              ? 'grid-cols-1 sm:grid-cols-2'
+              : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6'
+          }`}
+        >
+          {displayStats.map((stat) => (
+            <motion.div
+              key={stat.label}
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.15 }}
+              className="bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--border-light)] rounded-xl p-4 sm:p-5 shadow-xs flex flex-col justify-between transition-all"
+            >
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider truncate">
+                  {stat.label}
+                </span>
+
+                <div
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center border flex-shrink-0 ${stat.accentClass}`}
+                >
+                  {stat.icon}
+                </div>
+              </div>
+
+              <div>
+                {loading ? (
+                  <div className="h-8 w-20 bg-[var(--bg-tertiary)] rounded-md animate-pulse" />
+                ) : (
+                  <strong className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--text-primary)] block">
+                    {Number(stat.value || 0).toLocaleString()}
+                  </strong>
+                )}
+
+                <p className="text-xs text-[var(--text-muted)] mt-1 truncate">
+                  {stat.subtext}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* ======================================================
+          QUICK ACTIONS
+      ====================================================== */}
+      <motion.section variants={itemVariants} className="space-y-3 pt-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-[var(--text-primary)]">
+              Quick Actions
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] mt-0.5">
+              Frequently accessed emergency management tools
             </p>
           </div>
+        </div>
 
-          <div className="dashboard-header-actions">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+          {quickActions.map((action) => (
+            <motion.button
+              key={action.label}
+              type="button"
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.985 }}
+              onClick={() => navigate(action.path)}
+              className="text-left bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] hover:border-[var(--border-light)] rounded-xl p-4 shadow-xs transition-all flex flex-col justify-between group h-full"
+            >
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center border flex-shrink-0 ${action.accentClass}`}
+                >
+                  {action.icon}
+                </div>
 
-            {isPatient && (
-              <motion.button
-                type="button"
-                whileHover={{
-                  y: -2,
-                }}
-                whileTap={{
-                  scale: 0.98,
-                }}
-                onClick={() =>
-                  navigate('/emergency')
-                }
-                className="dashboard-sos"
-              >
-                <Phone size={18} />
-                <span>
-                  SOS Emergency
+                <ChevronRight
+                  size={16}
+                  className="text-[var(--text-muted)] group-hover:text-[var(--text-primary)] group-hover:translate-x-0.5 transition-all"
+                />
+              </div>
+
+              <div>
+                <strong className="text-sm font-semibold text-[var(--text-primary)] block truncate">
+                  {action.label}
+                </strong>
+                <span className="text-xs text-[var(--text-muted)] mt-0.5 block line-clamp-2">
+                  {action.description}
                 </span>
-              </motion.button>
-            )}
+              </div>
+            </motion.button>
+          ))}
+        </div>
+      </motion.section>
 
-          </div>
-        </motion.section>
-
-        {/* ======================================================
-            ERROR STATE
-        ====================================================== */}
-
-        {error && (
-          <motion.div
-            variants={itemVariants}
-            className="dashboard-error"
-          >
+      {/* ======================================================
+          RECENT EMERGENCIES (ADMIN JURISDICTION)
+      ====================================================== */}
+      {isAdmin && stats.recent_emergencies && stats.recent_emergencies.length > 0 && (
+        <motion.section variants={itemVariants} className="space-y-3 pt-2">
+          <div className="flex items-center justify-between">
             <div>
-              <strong>
-                Unable to load dashboard data
-              </strong>
-
-              <p>
-                Please check your connection
-                and try again.
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">
+                Recent Emergencies
+              </h2>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                Latest incoming requests across active jurisdiction
               </p>
             </div>
 
             <button
               type="button"
-              onClick={fetchStats}
+              onClick={() => navigate('/emergencies')}
+              className="text-xs font-semibold text-[var(--primary-500)] hover:text-[var(--primary-400)] flex items-center gap-1 transition-colors"
             >
-              <RefreshCw size={16} />
-              Retry
+              <span>View All</span>
+              <ChevronRight size={15} />
             </button>
-          </motion.div>
-        )}
+          </div>
 
-        {/* ======================================================
-            ACTIVE EMERGENCY
-        ====================================================== */}
-
-        {isPatient &&
-          stats.active_emergency && (
-            <motion.button
-              type="button"
-              variants={itemVariants}
-              className="active-emergency"
-              onClick={() =>
-                navigate('/emergencies')
-              }
-            >
-              <div className="emergency-left">
-
-                <div className="emergency-icon">
-                  <AlertTriangle size={22} />
-
-                  <span className="emergency-pulse" />
-                </div>
-
-                <div className="emergency-content">
-                  <h3>
-                    Active Emergency in Progress
-                  </h3>
-
-                  <p>
-                    <span>Status:</span>{' '}
-
-                    <strong>
-                      {formatStatus(
-                        stats.active_emergency.status
-                      )}
-                    </strong>
-
-                    <span className="emergency-dot">
-                      •
-                    </span>
-
-                    <span>
-                      Severity:
-                    </span>{' '}
-
-                    <strong>
-                      {
-                        stats.active_emergency
-                          .severity
-                      }
-                      /5
-                    </strong>
-                  </p>
-                </div>
-              </div>
-
-              <span className="emergency-arrow">
-                <ChevronRight size={20} />
-              </span>
-            </motion.button>
-          )}
-
-        {/* ======================================================
-            STATISTICS
-        ====================================================== */}
-
-        <motion.section
-          variants={itemVariants}
-          className={`dashboard-stats ${
-            isPatient
-              ? 'patient-stats'
-              : ''
-          }`}
-        >
-          {displayStats.map((stat) => (
-            <motion.article
-              key={stat.label}
-              className="dashboard-stat-card"
-              whileHover={{
-                y: -2,
-              }}
-              transition={{
-                duration: 0.15,
-              }}
-            >
-              <div className="stat-content">
-
-                <span className="stat-label">
-                  {stat.label}
-                </span>
-
-                {loading ? (
-                  <span
-                    className="stat-loading"
-                    aria-label="Loading"
-                  />
-                ) : (
-                  <strong className="stat-number">
-                    {Number(
-                      stat.value || 0
-                    ).toLocaleString()}
-                  </strong>
-                )}
-              </div>
-
-              <div
-                className="stat-icon"
-                style={{
-                  background:
-                    stat.gradient,
-
-                  boxShadow:
-                    `0 8px 24px ${stat.color}30`,
-                }}
-              >
-                {stat.icon}
-              </div>
-            </motion.article>
-          ))}
-        </motion.section>
-
-        {/* ======================================================
-            QUICK ACTIONS
-        ====================================================== */}
-
-        <motion.section
-          variants={itemVariants}
-          className="quick-actions-section"
-        >
-          <div className="section-heading">
-            <div>
-              <h2>
-                Quick Actions
-              </h2>
-
-              <p>
-                Frequently used tools and
-                emergency services
-              </p>
+          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse min-w-[540px]">
+                <thead>
+                  <tr className="border-b border-[var(--border-color)] bg-[var(--bg-tertiary)] text-[var(--text-muted)] text-xs font-semibold uppercase tracking-wider">
+                    <th className="py-3 px-4">Emergency Type</th>
+                    <th className="py-3 px-4">Severity</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Requested Time</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-color)]/60">
+                  {stats.recent_emergencies.map((emergency) => (
+                    <tr
+                      key={emergency.id}
+                      onClick={() => navigate('/emergencies')}
+                      className="hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
+                    >
+                      <td className="py-3.5 px-4 font-semibold text-[var(--text-primary)] capitalize">
+                        {emergency.type}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {getSeverityBadge(emergency.severity)}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {getStatusBadge(emergency.status)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right text-xs text-[var(--text-muted)]">
+                        {emergency.requested_at
+                          ? new Date(emergency.requested_at).toLocaleString()
+                          : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-
-          <div className="quick-actions-grid">
-
-            {quickActions.map((action) => (
-              <motion.button
-                key={action.label}
-                type="button"
-                whileHover={{
-                  y: -3,
-                }}
-                whileTap={{
-                  scale: 0.985,
-                }}
-                onClick={() =>
-                  navigate(action.path)
-                }
-                className="quick-action-card"
-              >
-                <span
-                  className="quick-action-icon"
-                  style={{
-                    background:
-                      action.gradient,
-
-                    boxShadow:
-                      `0 8px 22px ${action.color}30`,
-                  }}
-                >
-                  {action.icon}
-                </span>
-
-                <span className="quick-action-content">
-
-                  <strong>
-                    {action.label}
-                  </strong>
-
-                  <span>
-                    {action.description}
-                  </span>
-
-                </span>
-
-                <ChevronRight
-                  size={18}
-                  className="quick-action-arrow"
-                />
-              </motion.button>
-            ))}
-
-          </div>
         </motion.section>
+      )}
 
-        {/* ======================================================
-            RECENT EMERGENCIES
-        ====================================================== */}
+      {/* ======================================================
+          FOOTER
+      ====================================================== */}
+      <motion.footer
+        variants={itemVariants}
+        className="pt-6 border-t border-[var(--border-color)] flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-[var(--text-muted)]"
+      >
+        <div className="flex items-center gap-1.5 font-medium text-[var(--text-secondary)]">
+          <ShieldCheck size={16} className="text-[var(--primary-500)]" />
+          <span>Aegis AI Clinical Emergency Operations</span>
+        </div>
 
-        {isAdmin &&
-          stats.recent_emergencies &&
-          stats.recent_emergencies.length > 0 && (
-            <motion.section
-              variants={itemVariants}
-              className="recent-emergencies"
-            >
-              <div className="section-heading section-heading-row">
-
-                <div>
-                  <h2>
-                    Recent Emergencies
-                  </h2>
-
-                  <p>
-                    Latest incoming requests
-                    across your jurisdiction
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate('/emergencies')
-                  }
-                  className="view-all-button"
-                >
-                  <span>
-                    View All
-                  </span>
-
-                  <ChevronRight
-                    size={16}
-                  />
-                </button>
-
-              </div>
-
-              <div className="recent-table-card">
-
-                <div className="recent-table-scroll">
-
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>
-                          Type
-                        </th>
-
-                        <th>
-                          Severity
-                        </th>
-
-                        <th>
-                          Status
-                        </th>
-
-                        <th>
-                          Time
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {stats.recent_emergencies.map(
-                        (emergency) => (
-                          <tr
-                            key={
-                              emergency.id
-                            }
-                            onClick={() =>
-                              navigate(
-                                '/emergencies'
-                              )
-                            }
-                          >
-                            <td>
-                              {
-                                emergency.type
-                              }
-                            </td>
-
-                            <td>
-                              <span
-                                className={`severity-${emergency.severity}`}
-                              >
-                                Level{' '}
-                                {
-                                  emergency.severity
-                                }
-                              </span>
-                            </td>
-
-                            <td>
-                              <span
-                                className={`status-${emergency.status}`}
-                              >
-                                {formatStatus(
-                                  emergency.status
-                                )}
-                              </span>
-                            </td>
-
-                            <td>
-                              {emergency.requested_at
-                                ? new Date(
-                                    emergency.requested_at
-                                  ).toLocaleString()
-                                : '-'}
-                            </td>
-                          </tr>
-                        )
-                      )}
-                    </tbody>
-                  </table>
-
-                </div>
-              </div>
-            </motion.section>
-          )}
-
-        {/* ======================================================
-            FOOTER
-        ====================================================== */}
-
-        <motion.footer
-          variants={itemVariants}
-          className="dashboard-footer"
-        >
-          <div className="footer-brand">
-            <ShieldCheck size={15} />
-
-            <span>
-              Aegis AI
-            </span>
-          </div>
-
-          <span>
-            © 2026 Aegis AI. All rights reserved.
-          </span>
-        </motion.footer>
-
-      </div>
+        <span>© 2026 Aegis AI. All rights reserved.</span>
+      </motion.footer>
     </motion.div>
   );
 }
