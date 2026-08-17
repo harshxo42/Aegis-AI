@@ -119,34 +119,66 @@ export default function EmergenciesListPage() {
   };
 
   // ---------------------------------------------------------
-  // Status colors
+  // Status pill helper
   // ---------------------------------------------------------
-  const getStatusColor = (status: string) => {
+  const renderStatusBadge = (status: string) => {
     switch (status) {
       case 'requested':
-        return 'var(--warning-400)';
-
+        return (
+          <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+            Requested
+          </span>
+        );
       case 'dispatched':
-        return 'var(--primary-400)';
-
       case 'en_route':
-        return 'var(--accent-400)';
-
       case 'arrived':
-        return 'var(--accent-500)';
-
       case 'in_treatment':
-        return 'var(--primary-500)';
-
+        return (
+          <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+            {status.replace(/_/g, ' ')}
+          </span>
+        );
       case 'resolved':
-        return 'var(--text-muted)';
-
+        return (
+          <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+            Resolved
+          </span>
+        );
       case 'cancelled':
-        return 'var(--danger-400)';
-
+        return (
+          <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+            Cancelled
+          </span>
+        );
       default:
-        return 'var(--text-secondary)';
+        return (
+          <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border-color)]">
+            {status.replace(/_/g, ' ')}
+          </span>
+        );
     }
+  };
+
+  const renderSeverityBadge = (severity: number) => {
+    if (severity >= 4) {
+      return (
+        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex-shrink-0">
+          Level {severity} Critical
+        </span>
+      );
+    }
+    if (severity === 3) {
+      return (
+        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex-shrink-0">
+          Level {severity} Moderate
+        </span>
+      );
+    }
+    return (
+      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex-shrink-0">
+        Level {severity} Low
+      </span>
+    );
   };
 
   // ---------------------------------------------------------
@@ -169,20 +201,19 @@ export default function EmergenciesListPage() {
       {/* =====================================================
           HEADER
       ====================================================== */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-5">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Activity
-              size={28}
-              style={{ color: 'var(--danger-400)' }}
-            />
-            Emergencies
+          <h1 className="text-2xl font-bold flex items-center gap-3 text-[var(--text-primary)]">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+              <Activity size={22} />
+            </div>
+            Incident Command Queue
           </h1>
 
-          <p className="text-sm mt-1 text-gray-400">
+          <p className="text-sm mt-1 text-[var(--text-muted)]">
             {user?.role === 'patient'
-              ? 'Your emergency history and active requests'
-              : 'Manage emergency requests and dispatches'}
+              ? 'Your emergency history and active response tickets'
+              : 'Live triage queue, active dispatches, and emergency records'}
           </p>
         </div>
 
@@ -193,7 +224,7 @@ export default function EmergenciesListPage() {
             onClick={handleRefresh}
             disabled={loading || refreshing}
             title="Refresh emergencies"
-            className="w-10 h-10 rounded-xl flex items-center justify-center border border-[var(--border-color)] bg-[var(--bg-tertiary)] text-gray-400 hover:text-white transition-all disabled:opacity-50"
+            className="w-10 h-10 rounded-xl flex items-center justify-center border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all disabled:opacity-50"
           >
             <RefreshCw
               size={17}
@@ -204,17 +235,17 @@ export default function EmergenciesListPage() {
           </button>
 
           {/* Filters */}
-          <div className="flex flex-wrap gap-1 bg-[var(--bg-tertiary)] p-1 rounded-xl border border-[var(--border-color)]">
+          <div className="flex flex-wrap gap-1 bg-[var(--bg-card)] p-1 rounded-xl border border-[var(--border-color)]">
             {(['active', 'resolved', 'all'] as EmergencyFilter[]).map(
               (currentFilter) => (
                 <button
                   key={currentFilter}
                   type="button"
                   onClick={() => setFilter(currentFilter)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
                     filter === currentFilter
-                      ? 'bg-[var(--bg-secondary)] text-white shadow-sm'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-[var(--primary-600)] text-white shadow-xs'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   {currentFilter}
@@ -228,14 +259,14 @@ export default function EmergenciesListPage() {
       {/* =====================================================
           LIST
       ====================================================== */}
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         {loading ? (
           [1, 2, 3].map((item) => (
             <div
               key={item}
-              className="glass-card p-6 flex gap-4"
+              className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-5 flex gap-4"
             >
-              <div className="skeleton h-12 w-12 rounded-full flex-shrink-0" />
+              <div className="skeleton h-12 w-12 rounded-xl flex-shrink-0" />
 
               <div className="flex-1 space-y-3">
                 <div className="skeleton h-5 w-1/4" />
@@ -247,20 +278,19 @@ export default function EmergenciesListPage() {
           /* =================================================
              EMPTY STATE
           ================================================== */
-          <div className="glass-card p-12 text-center border-dashed">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] border-dashed rounded-xl p-12 text-center">
             <AlertTriangle
-              size={48}
-              className="mx-auto mb-4 text-gray-600"
+              size={44}
+              className="mx-auto mb-3 text-[var(--text-muted)] opacity-60"
             />
 
-            <p className="text-lg font-medium text-gray-300">
+            <p className="text-base font-semibold text-[var(--text-primary)]">
               {getEmptyMessage()}
             </p>
 
             {filter === 'active' && (
-              <p className="text-sm text-gray-500 mt-2">
-                Active emergency requests will appear here
-                after they are successfully submitted.
+              <p className="text-xs text-[var(--text-muted)] mt-1.5 max-w-sm mx-auto">
+                Active emergency requests will appear here in real-time as they are submitted.
               </p>
             )}
 
@@ -268,15 +298,15 @@ export default function EmergenciesListPage() {
               type="button"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-[var(--bg-tertiary)] border border-[var(--border-color)] hover:bg-[var(--bg-hover)] transition-all disabled:opacity-50"
+              className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-[var(--text-primary)] bg-[var(--bg-tertiary)] border border-[var(--border-color)] hover:bg-[var(--bg-hover)] transition-all disabled:opacity-50"
             >
               <RefreshCw
-                size={15}
+                size={14}
                 className={
                   refreshing ? 'animate-spin' : ''
                 }
               />
-              Refresh
+              Refresh Queue
             </button>
           </div>
         ) : (
@@ -284,10 +314,6 @@ export default function EmergenciesListPage() {
              EMERGENCY CARDS
           ================================================== */
           emergencies.map((emergency, index) => {
-            const statusColor = getStatusColor(
-              emergency.status
-            );
-
             const isCritical = emergency.severity >= 4;
 
             return (
@@ -295,16 +321,16 @@ export default function EmergenciesListPage() {
                 key={emergency.id}
                 initial={{
                   opacity: 0,
-                  y: 10,
+                  y: 8,
                 }}
                 animate={{
                   opacity: 1,
                   y: 0,
                 }}
                 transition={{
-                  delay: index * 0.05,
+                  delay: Math.min(index * 0.03, 0.2),
                 }}
-                className="glass-card p-5 hover:bg-[var(--bg-hover)] transition-colors cursor-pointer group"
+                className="bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--border-light)] rounded-xl p-5 hover:bg-[var(--bg-hover)] transition-all cursor-pointer group shadow-xs"
                 onClick={() =>
                   navigate(
                     `/emergencies/${emergency.id}`
@@ -313,65 +339,63 @@ export default function EmergenciesListPage() {
                 style={{
                   borderLeft: isCritical
                     ? '4px solid var(--danger-500)'
-                    : '4px solid transparent',
+                    : '4px solid var(--border-color)',
                 }}
               >
                 <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                   {/* Left content */}
                   <div className="flex items-start gap-4 flex-1 min-w-0">
                     <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{
-                        background:
-                          'rgba(239, 68, 68, 0.1)',
-                      }}
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        isCritical
+                          ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                          : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                      }`}
                     >
                       <Activity
-                        size={24}
-                        style={{
-                          color:
-                            'var(--danger-400)',
-                        }}
+                        size={20}
                       />
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-3 mb-1">
-                        <h3 className="font-semibold text-lg capitalize text-white group-hover:text-[var(--danger-400)] transition-colors">
+                      <div className="flex flex-wrap items-center gap-2.5 mb-1.5">
+                        <h3 className="font-bold text-base capitalize text-[var(--text-primary)] group-hover:text-[var(--primary-500)] transition-colors">
                           {emergency.emergency_type}{' '}
                           Emergency
                         </h3>
 
-                        <span
-                          className={`severity-${emergency.severity} px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0`}
-                        >
-                          Lvl {emergency.severity}
-                        </span>
+                        {renderSeverityBadge(emergency.severity)}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-400">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[var(--text-muted)]">
                         <span className="flex items-center gap-1 min-w-0">
                           <MapPin
-                            size={14}
-                            className="flex-shrink-0"
+                            size={13}
+                            className="flex-shrink-0 text-[var(--primary-500)]"
                           />
 
-                          <span className="truncate max-w-[420px]">
+                          <span className="truncate max-w-[420px] text-[var(--text-secondary)]">
                             {emergency.location_address ||
-                              'Location provided via GPS'}
+                              'GPS coordinates registered'}
                           </span>
                         </span>
 
                         <span className="flex items-center gap-1">
-                          <Clock size={14} />
+                          <Clock size={13} />
 
-                          {formatDistanceToNow(
-                            new Date(
-                              emergency.requested_at
-                            ),
-                            {
-                              addSuffix: true,
-                            }
+                          {emergency.requested_at ? (
+                            <span>
+                              {formatDistanceToNow(
+                                new Date(
+                                  emergency.requested_at
+                                ),
+                                {
+                                  addSuffix: true,
+                                }
+                              )}
+                            </span>
+                          ) : (
+                            <span>-</span>
                           )}
                         </span>
                       </div>
@@ -379,35 +403,15 @@ export default function EmergenciesListPage() {
                   </div>
 
                   {/* Right content */}
-                  <div className="flex items-center justify-between w-full md:w-auto md:flex-col md:items-end gap-2 border-t md:border-t-0 border-[var(--border-color)] pt-3 md:pt-0">
+                  <div className="flex items-center justify-between w-full md:w-auto md:flex-col md:items-end gap-2.5 border-t md:border-t-0 border-[var(--border-color)] pt-3 md:pt-0">
+                    {renderStatusBadge(emergency.status)}
+
                     <span
-                      className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
-                      style={{
-                        color: statusColor,
-                        background: `${statusColor}20`,
-                        border: `1px solid ${statusColor}40`,
-                      }}
-                    >
-                      {emergency.status.replace(
-                        /_/g,
-                        ' '
-                      )}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-
-                        navigate(
-                          `/emergencies/${emergency.id}`
-                        );
-                      }}
-                      className="flex items-center gap-1 text-sm text-[var(--primary-400)] font-medium group-hover:underline"
+                      className="flex items-center gap-1 text-xs text-[var(--primary-500)] font-semibold group-hover:underline"
                     >
                       View Details
-                      <ChevronRight size={16} />
-                    </button>
+                      <ChevronRight size={15} />
+                    </span>
                   </div>
                 </div>
               </motion.div>

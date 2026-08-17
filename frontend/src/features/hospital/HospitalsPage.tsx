@@ -344,25 +344,16 @@ export default function HospitalsPage() {
         <div>
           <div className="flex items-center gap-3">
             <div
-              className="w-11 h-11 rounded-xl flex items-center justify-center"
-              style={{
-                background:
-                  'rgba(59, 130, 246, 0.12)',
-                border:
-                  '1px solid rgba(59, 130, 246, 0.20)',
-              }}
+              className="w-11 h-11 rounded-xl flex items-center justify-center bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 flex-shrink-0"
             >
               <Building2
                 size={23}
-                style={{
-                  color: 'var(--primary-400)',
-                }}
               />
             </div>
 
             <div>
-              <h1 className="text-2xl font-bold text-white">
-                Hospitals
+              <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+                Hospitals Directory
               </h1>
 
               <p
@@ -371,8 +362,7 @@ export default function HospitalsPage() {
                   color: 'var(--text-muted)',
                 }}
               >
-                Find hospitals, emergency services,
-                beds and ICU availability.
+                Find hospitals, emergency services, beds and ICU availability.
               </p>
             </div>
           </div>
@@ -382,11 +372,10 @@ export default function HospitalsPage() {
           type="button"
           onClick={() => void fetchHospitals(true)}
           disabled={loading || refreshing}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
-            background: 'var(--bg-tertiary)',
-            border:
-              '1px solid var(--border-color)',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
             color: 'var(--text-primary)',
           }}
         >
@@ -452,7 +441,7 @@ export default function HospitalsPage() {
       ======================================================= */}
 
       <div
-        className="glass-card p-4"
+        className="bg-[var(--bg-card)] p-4 rounded-xl shadow-xs"
         style={{
           border:
             '1px solid var(--border-color)',
@@ -659,32 +648,19 @@ export default function HospitalsPage() {
 
       {error && !loading && (
         <div
-          className="glass-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4"
-          style={{
-            border:
-              '1px solid rgba(239, 68, 68, 0.25)',
-            background:
-              'rgba(239, 68, 68, 0.06)',
-          }}
+          className="bg-rose-500/10 border border-rose-500/25 p-5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-4 text-rose-600 dark:text-rose-400"
         >
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{
-              background:
-                'rgba(239, 68, 68, 0.12)',
-            }}
+            className="w-10 h-10 rounded-xl flex items-center justify-center bg-rose-500/15 flex-shrink-0"
           >
             <AlertCircle
               size={20}
-              style={{
-                color:
-                  'var(--danger-400)',
-              }}
+              className="text-rose-600 dark:text-rose-400"
             />
           </div>
 
           <div className="flex-1">
-            <p className="font-semibold text-sm text-white">
+            <p className="font-semibold text-sm text-[var(--text-primary)]">
               Hospitals could not be loaded
             </p>
 
@@ -704,10 +680,10 @@ export default function HospitalsPage() {
             onClick={() =>
               void fetchHospitals(true)
             }
-            className="px-4 py-2 rounded-lg text-sm font-semibold"
+            className="px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[var(--bg-hover)] transition-colors"
             style={{
               background:
-                'var(--bg-tertiary)',
+                'var(--bg-card)',
               border:
                 '1px solid var(--border-color)',
               color:
@@ -729,7 +705,7 @@ export default function HospitalsPage() {
             (item) => (
               <div
                 key={item}
-                className="glass-card p-5 space-y-4"
+                className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-5 space-y-4"
               >
                 <div className="flex justify-between">
                   <div className="space-y-2 flex-1">
@@ -760,24 +736,16 @@ export default function HospitalsPage() {
       {!loading &&
         !error &&
         hospitals.length === 0 && (
-          <div className="glass-card p-12 text-center">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-12 text-center">
             <div
-              className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center"
-              style={{
-                background:
-                  'rgba(59, 130, 246, 0.08)',
-              }}
+              className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
             >
               <Building2
                 size={30}
-                style={{
-                  color:
-                    'var(--text-muted)',
-                }}
               />
             </div>
 
-            <p className="text-lg font-semibold text-white">
+            <p className="text-lg font-semibold text-[var(--text-primary)]">
               {hasFilters ? 'No matching hospitals found' : 'No hospitals are currently available.'}
             </p>
 
@@ -797,12 +765,7 @@ export default function HospitalsPage() {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
-                style={{
-                  background:
-                    'var(--primary-500)',
-                  color: 'white',
-                }}
+                className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[var(--primary-600)] text-white hover:bg-[var(--primary-500)] transition-colors"
               >
                 <X size={15} />
                 Clear Filters
@@ -846,47 +809,29 @@ export default function HospitalsPage() {
                         `/hospitals/${hospitalId}`
                       )
                     }
-                    className="glass-card p-5 cursor-pointer group transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-500/30"
-                    style={{
-                      border:
-                        '1px solid var(--border-color)',
-                    }}
+                    className="bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--border-light)] rounded-xl p-5 cursor-pointer group transition-all duration-200 hover:-translate-y-0.5 shadow-xs"
                   >
                     {/* Header */}
 
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0 flex-1">
                         <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{
-                            background:
-                              'rgba(59, 130, 246, 0.10)',
-                          }}
+                          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
                         >
                           <Building2
                             size={19}
-                            style={{
-                              color:
-                                'var(--primary-400)',
-                            }}
                           />
                         </div>
 
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold text-base text-white truncate group-hover:text-[var(--primary-400)] transition-colors">
+                            <h3 className="font-semibold text-base text-[var(--text-primary)] truncate group-hover:text-[var(--primary-500)] transition-colors">
                               {hospital.name}
                             </h3>
 
                             {hospital.is_verified && (
                               <span
-                                className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                                style={{
-                                  background:
-                                    'rgba(16, 185, 129, 0.12)',
-                                  color:
-                                    '#10b981',
-                                }}
+                                className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
                               >
                                 <ShieldCheck
                                   size={10}
@@ -927,10 +872,7 @@ export default function HospitalsPage() {
                                   </span>
 
                                   <span
-                                    style={{
-                                      color:
-                                        'var(--primary-400)',
-                                    }}
+                                    className="text-[var(--primary-500)] font-medium"
                                   >
                                     {
                                       hospital.distance_km
@@ -946,29 +888,15 @@ export default function HospitalsPage() {
                       {/* Rating */}
 
                       <div
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg flex-shrink-0"
-                        style={{
-                          background:
-                            'rgba(250, 204, 21, 0.08)',
-                          border:
-                            '1px solid rgba(250, 204, 21, 0.12)',
-                        }}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg flex-shrink-0 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400"
                       >
                         <Star
                           size={12}
                           fill="currentColor"
-                          style={{
-                            color:
-                              '#fbbf24',
-                          }}
                         />
 
                         <span
                           className="text-xs font-semibold"
-                          style={{
-                            color:
-                              '#fbbf24',
-                          }}
                         >
                           {hospital.rating
                             ? Number(
@@ -994,8 +922,13 @@ export default function HospitalsPage() {
                             color:
                               hospital.hospital_type ===
                               'government'
-                                ? '#60a5fa'
-                                : '#a78bfa',
+                                ? 'var(--primary-500)'
+                                : 'var(--accent-500)',
+                            border:
+                              hospital.hospital_type ===
+                              'government'
+                                ? '1px solid rgba(59, 130, 246, 0.20)'
+                                : '1px solid rgba(139, 92, 246, 0.20)',
                           }}
                         >
                           {
@@ -1006,13 +939,7 @@ export default function HospitalsPage() {
 
                       {hospital.has_emergency && (
                         <span
-                          className="text-xs px-2.5 py-1 rounded-lg font-medium"
-                          style={{
-                            background:
-                              'rgba(239, 68, 68, 0.10)',
-                            color:
-                              '#f87171',
-                          }}
+                          className="text-xs px-2.5 py-1 rounded-lg font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
                         >
                           24/7 Emergency
                         </span>
@@ -1031,7 +958,7 @@ export default function HospitalsPage() {
                           0
                         }
                         label="Beds"
-                        iconColor="var(--accent-400)"
+                        iconColor="var(--primary-500)"
                       />
 
                       <AvailabilityStat
@@ -1045,7 +972,7 @@ export default function HospitalsPage() {
                           0
                         }
                         label="ICU"
-                        iconColor="#f43f5e"
+                        iconColor="var(--danger-500)"
                       />
 
                       <AvailabilityStat
@@ -1060,7 +987,7 @@ export default function HospitalsPage() {
                             : 'No'
                         }
                         label="Ambulance"
-                        iconColor="#f59e0b"
+                        iconColor="var(--warning-500)"
                       />
                     </div>
 
@@ -1137,11 +1064,7 @@ export default function HospitalsPage() {
                       <div className="flex-1" />
 
                       <span
-                        className="inline-flex items-center gap-1 text-xs font-medium transition-colors"
-                        style={{
-                          color:
-                            'var(--primary-400)',
-                        }}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary-500)] group-hover:text-[var(--primary-400)] transition-colors"
                       >
                         View Details
 
@@ -1176,16 +1099,12 @@ function SummaryCard({
 }) {
   return (
     <div
-      className="glass-card p-4"
-      style={{
-        border:
-          '1px solid var(--border-color)',
-      }}
+      className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-4 shadow-xs"
     >
       <div className="flex items-center justify-between gap-3">
         <div>
           <p
-            className="text-xs"
+            className="text-xs font-semibold uppercase tracking-wider"
             style={{
               color:
                 'var(--text-muted)',
@@ -1194,19 +1113,13 @@ function SummaryCard({
             {label}
           </p>
 
-          <p className="text-xl font-bold text-white mt-1">
+          <p className="text-xl font-bold text-[var(--text-primary)] mt-1">
             {value}
           </p>
         </div>
 
         <div
-          className="w-9 h-9 rounded-lg flex items-center justify-center"
-          style={{
-            background:
-              'rgba(59, 130, 246, 0.10)',
-            color:
-              'var(--primary-400)',
-          }}
+          className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
         >
           {icon}
         </div>
@@ -1232,11 +1145,7 @@ function AvailabilityStat({
 }) {
   return (
     <div
-      className="text-center py-2.5 px-2 rounded-xl"
-      style={{
-        background:
-          'var(--bg-tertiary)',
-      }}
+      className="text-center py-2.5 px-2 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)]/60"
     >
       <div
         className="flex justify-center mb-1"
@@ -1248,10 +1157,7 @@ function AvailabilityStat({
       </div>
 
       <p
-        className="text-sm font-bold"
-        style={{
-          color: iconColor,
-        }}
+        className="text-sm font-bold text-[var(--text-primary)]"
       >
         {value}
       </p>
