@@ -89,32 +89,42 @@ export default function EmergencySOSPage() {
   const navigate = useNavigate();
   const routerLocation = useLocation();
 
-  const selectedHospital = routerLocation.state as {
+  const navState = routerLocation.state as {
     hospitalId?: string;
     hospitalName?: string;
     hospitalAddress?: string;
+    lat?: number;
+    lng?: number;
   } | null;
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    hospital_id: selectedHospital?.hospitalId || '',
+    hospital_id: navState?.hospitalId || '',
     emergency_type: 'other' as EmergencyType,
     severity: 4,
     description: '',
     symptoms: '',
-    location_lat: 28.6139,
-    location_lng: 77.209,
-    location_address: selectedHospital?.hospitalAddress || '',
+    location_lat: typeof navState?.lat === 'number' ? navState.lat : 28.6139,
+    location_lng: typeof navState?.lng === 'number' ? navState.lng : 77.209,
+    location_address: navState?.hospitalAddress || '',
   });
 
-  const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>(
+    typeof navState?.lat === 'number' && typeof navState?.lng === 'number'
+      ? 'success'
+      : 'idle'
+  );
 
   // -------------------------------
   // Auto Detect Location
   // -------------------------------
   useEffect(() => {
+    if (typeof navState?.lat === 'number' && typeof navState?.lng === 'number') {
+      return;
+    }
+
     if (!navigator.geolocation) {
       setLocationStatus('error');
       return;
@@ -141,7 +151,7 @@ export default function EmergencySOSPage() {
         maximumAge: 0,
       }
     );
-  }, []);
+  }, [navState]);
 
   // -------------------------------
   // Map Selection
@@ -401,7 +411,7 @@ export default function EmergencySOSPage() {
               >
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* PREFERRED HOSPITAL */}
-                  {selectedHospital?.hospitalName && (
+                  {navState?.hospitalName && (
                     <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/25 flex items-start gap-3">
                       <Building2 size={20} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                       <div className="min-w-0">
@@ -409,11 +419,11 @@ export default function EmergencySOSPage() {
                           Target Facility Routed
                         </p>
                         <p className="text-sm font-bold text-[var(--text-primary)] mt-0.5">
-                          {selectedHospital.hospitalName}
+                          {navState.hospitalName}
                         </p>
-                        {selectedHospital.hospitalAddress && (
+                        {navState.hospitalAddress && (
                           <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                            {selectedHospital.hospitalAddress}
+                            {navState.hospitalAddress}
                           </p>
                         )}
                       </div>

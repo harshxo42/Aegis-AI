@@ -484,7 +484,7 @@ export default function DashboardPage() {
               className="bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[var(--border-light)] rounded-xl p-4 sm:p-5 shadow-xs flex flex-col justify-between transition-all"
             >
               <div className="flex items-center justify-between gap-2 mb-3">
-                <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider truncate">
+                <span className="text-xs sm:text-[13px] font-bold text-[var(--text-secondary)] leading-tight">
                   {stat.label}
                 </span>
 

@@ -258,13 +258,7 @@ export default function App() {
 
               <Route
                 path="/emergency"
-                element={
-                  <ProtectedRoute
-                    allowedRoles={['patient']}
-                  >
-                    <EmergencySOSPage />
-                  </ProtectedRoute>
-                }
+                element={<EmergencySOSPage />}
               />
 
               <Route

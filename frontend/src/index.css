@@ -2268,11 +2268,10 @@ html.dark .aegis-nav-link.active {
   min-width: 0;
   flex: 1;
   margin-left: 12px;
-  overflow: hidden;
   white-space: nowrap;
-  text-overflow: ellipsis;
   font-size: 14px;
-  line-height: 1;
+  font-weight: 500;
+  line-height: 1.2;
 }
 
 /* FOOTER */
@@ -2319,10 +2318,13 @@ html.dark .aegis-nav-link.active {
 }
 
 .collapse-label {
+  min-width: 0;
+  flex: 1;
   margin-left: 12px;
   white-space: nowrap;
   font-size: 13.5px;
   font-weight: 500;
+  line-height: 1.2;
 }
 
 /* ============================================================

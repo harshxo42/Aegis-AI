@@ -13,12 +13,87 @@ import {
   AlertTriangle,
   Layers,
   RefreshCw,
+  X,
 } from 'lucide-react';
 import Map from '@/components/maps/Map';
-import { hospitalIcon, emergencyIcon, userLocationIcon } from '@/components/maps/MapIcons';
+import {
+  hospitalIcon,
+  emergencyIcon,
+  userLocationIcon,
+  selectedPinIcon,
+} from '@/components/maps/MapIcons';
 import { Marker, Popup } from 'react-leaflet';
 import { hospitalsAPI, emergenciesAPI } from '@/api/client';
 import type { Hospital, EmergencyRequest } from '@/types';
+
+interface AddressDetails {
+  primary: string;
+  secondary: string;
+  full: string;
+}
+
+// In-memory lookup cache to prevent duplicate requests for identical coordinates
+const geocodeCache: Record<string, AddressDetails> = {};
+
+const reverseGeocode = async (lat: number, lng: number): Promise<AddressDetails | null> => {
+  const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+  if (geocodeCache[cacheKey]) {
+    return geocodeCache[cacheKey];
+  }
+
+  const apiKey = import.meta.env.VITE_LOCATIONIQ_API_KEY;
+
+  try {
+    let res: Response;
+    if (apiKey) {
+      res = await fetch(
+        `https://us1.locationiq.com/v1/reverse?key=${apiKey}&lat=${lat}&lon=${lng}&format=json`
+      );
+    } else {
+      res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      );
+    }
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    const addr = data.address || {};
+
+    const primary =
+      addr.road ||
+      addr.suburb ||
+      addr.neighbourhood ||
+      addr.residential ||
+      addr.amenity ||
+      addr.building ||
+      addr.commercial ||
+      addr.name ||
+      addr.city_district ||
+      addr.city ||
+      'Selected Location';
+
+    const secondaryParts = [
+      addr.city || addr.town || addr.village || addr.county,
+      addr.state || addr.province,
+      addr.country,
+    ].filter(Boolean);
+
+    const secondary = secondaryParts.join(', ');
+    const full = data.display_name || `${primary}, ${secondary}`;
+
+    const result: AddressDetails = {
+      primary,
+      secondary,
+      full,
+    };
+
+    geocodeCache[cacheKey] = result;
+    return result;
+  } catch (err) {
+    console.warn('[Aegis AI] Reverse geocoding lookup failed:', err);
+    return null;
+  }
+};
 
 export default function LiveMapPage() {
   const navigate = useNavigate();
@@ -26,6 +101,9 @@ export default function LiveMapPage() {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [emergencies, setEmergencies] = useState<EmergencyRequest[]>([]);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
+  const [addressData, setAddressData] = useState<AddressDetails | null>(null);
+  const [addressLoading, setAddressLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [showHospitals, setShowHospitals] = useState(true);
@@ -101,6 +179,33 @@ export default function LiveMapPage() {
     }
     return emergencies;
   }, [emergencies, showEmergencies, selectedCategory]);
+
+  const handleLocationSelect = async (lat: number, lng: number) => {
+    setSelectedLocation([lat, lng]);
+    setAddressLoading(true);
+    setAddressData(null);
+
+    const resolved = await reverseGeocode(lat, lng);
+    setAddressData(resolved);
+    setAddressLoading(false);
+  };
+
+  const handleClearPin = () => {
+    setSelectedLocation(null);
+    setAddressData(null);
+    setAddressLoading(false);
+  };
+
+  const handleRequestEmergency = () => {
+    if (!selectedLocation) return;
+    navigate('/emergency', {
+      state: {
+        lat: selectedLocation[0],
+        lng: selectedLocation[1],
+        hospitalAddress: addressData?.full || '',
+      },
+    });
+  };
 
   return (
     <div className="space-y-5 pb-8">
@@ -212,10 +317,80 @@ export default function LiveMapPage() {
         </div>
       </div>
 
+      {/* SELECTED LOCATION BAR (IF PIN ACTIVE) */}
+      {selectedLocation && (
+        <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs mt-0.5">
+              <MapPin size={18} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Selected Location
+                </span>
+                {addressLoading && (
+                  <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1">
+                    <RefreshCw size={10} className="animate-spin" />
+                    Finding location...
+                  </span>
+                )}
+              </div>
+
+              {addressData ? (
+                <div className="mt-0.5">
+                  <strong className="text-sm font-bold text-[var(--text-primary)] block truncate">
+                    {addressData.primary}
+                  </strong>
+                  {addressData.secondary && (
+                    <p className="text-xs text-[var(--text-muted)] truncate">
+                      {addressData.secondary}
+                    </p>
+                  )}
+                </div>
+              ) : !addressLoading ? (
+                <p className="text-xs font-medium text-[var(--text-secondary)] mt-0.5">
+                  Custom Location Pin
+                </p>
+              ) : null}
+
+              <p className="text-[11px] font-mono text-[var(--text-muted)] mt-1">
+                {selectedLocation[0].toFixed(5)}, {selectedLocation[1].toFixed(5)}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-stretch sm:self-auto flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleClearPin}
+              className="px-3 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] text-xs font-semibold text-[var(--text-secondary)] hover:text-rose-500 hover:bg-[var(--bg-hover)] transition-all flex items-center gap-1.5"
+            >
+              <X size={13} />
+              <span>Clear Pin</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleRequestEmergency}
+              className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs flex-1 sm:flex-initial justify-center"
+            >
+              <AlertTriangle size={14} />
+              <span>Request Emergency Here</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* MAP CONTAINER */}
       <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl overflow-hidden shadow-xs relative">
         <div className="w-full h-[520px] sm:h-[600px] relative">
-          <Map center={mapCenter} zoom={13} height="100%">
+          <Map
+            center={mapCenter}
+            zoom={13}
+            height="100%"
+            onLocationSelect={handleLocationSelect}
+          >
             {/* USER LOCATION MARKER */}
             {userLocation && (
               <Marker position={userLocation} icon={userLocationIcon}>
@@ -225,6 +400,75 @@ export default function LiveMapPage() {
                     <p className="text-[11px] text-[var(--text-muted)] font-mono mt-0.5">
                       {userLocation[0].toFixed(4)}, {userLocation[1].toFixed(4)}
                     </p>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+
+            {/* TEMPORARY SELECTED LOCATION PIN */}
+            {selectedLocation && (
+              <Marker position={selectedLocation} icon={selectedPinIcon}>
+                <Popup>
+                  <div className="p-1 min-w-[220px] max-w-[280px] space-y-2.5">
+                    <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-1.5">
+                      <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1">
+                        <MapPin size={12} />
+                        Selected Location
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleClearPin}
+                        className="text-[11px] font-semibold text-[var(--text-muted)] hover:text-rose-500 transition-colors"
+                      >
+                        Clear Pin
+                      </button>
+                    </div>
+
+                    {/* ADDRESS SECTION */}
+                    {addressLoading ? (
+                      <div className="p-2 rounded-lg bg-[var(--bg-tertiary)] flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                        <RefreshCw size={12} className="animate-spin text-indigo-500" />
+                        <span>Finding location address...</span>
+                      </div>
+                    ) : addressData ? (
+                      <div className="p-2 rounded-lg bg-[var(--bg-tertiary)] space-y-0.5">
+                        <p className="text-xs font-bold text-[var(--text-primary)] leading-snug">
+                          📍 {addressData.primary}
+                        </p>
+                        {addressData.secondary && (
+                          <p className="text-[11px] text-[var(--text-muted)] leading-snug">
+                            {addressData.secondary}
+                          </p>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {/* COORDINATES */}
+                    <div className="space-y-1 bg-[var(--bg-tertiary)] p-2 rounded-lg text-xs font-mono">
+                      <div className="flex justify-between text-[var(--text-secondary)]">
+                        <span className="text-[var(--text-muted)]">Latitude:</span>
+                        <span className="font-semibold text-[var(--text-primary)]">
+                          {selectedLocation[0].toFixed(5)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[var(--text-secondary)]">
+                        <span className="text-[var(--text-muted)]">Longitude:</span>
+                        <span className="font-semibold text-[var(--text-primary)]">
+                          {selectedLocation[1].toFixed(5)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-1 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleRequestEmergency}
+                        className="w-full py-2 px-3 rounded-lg bg-rose-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-rose-500 shadow-xs transition-colors"
+                      >
+                        <AlertTriangle size={14} />
+                        <span>Request Emergency Here</span>
+                      </button>
+                    </div>
                   </div>
                 </Popup>
               </Marker>
@@ -339,6 +583,13 @@ export default function LiveMapPage() {
               <span className="w-3 h-3 rounded-full bg-rose-600 border border-white dark:border-slate-800 animate-pulse" />
               <span>Active Emergency ({filteredEmergencies.length})</span>
             </span>
+
+            {selectedLocation && (
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-indigo-600 border border-white dark:border-slate-800 animate-pulse" />
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400">Selected Map Pin</span>
+              </span>
+            )}
 
             {userLocation && (
               <span className="flex items-center gap-1.5">

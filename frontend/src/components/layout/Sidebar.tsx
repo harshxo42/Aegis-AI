@@ -307,18 +307,18 @@ export default function Sidebar() {
                         <motion.span
                           initial={{
                             opacity: 0,
-                            width: 0,
+                            x: -6,
                           }}
                           animate={{
                             opacity: 1,
-                            width: 'auto',
+                            x: 0,
                           }}
                           exit={{
                             opacity: 0,
-                            width: 0,
+                            x: -6,
                           }}
                           transition={{
-                            duration: 0.18,
+                            duration: 0.15,
                           }}
                           className="nav-label"
                         >
@@ -371,18 +371,18 @@ export default function Sidebar() {
               <motion.span
                 initial={{
                   opacity: 0,
-                  width: 0,
+                  x: -6,
                 }}
                 animate={{
                   opacity: 1,
-                  width: 'auto',
+                  x: 0,
                 }}
                 exit={{
                   opacity: 0,
-                  width: 0,
+                  x: -6,
                 }}
                 transition={{
-                  duration: 0.18,
+                  duration: 0.15,
                 }}
                 className="collapse-label"
               >
