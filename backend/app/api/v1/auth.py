@@ -4,12 +4,13 @@ Aegis AI – Auth API Routes
 Authentication endpoints: register, login, refresh, me, change password.
 """
 
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, status
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, security
 from app.models.user import User
 from app.schemas.auth import (
     LoginRequest,
@@ -145,12 +146,19 @@ async def change_password(
 )
 async def logout(
     current_user: User = Depends(get_current_user),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> Any:
     """
     Logout the current user.
-
-    Note: JWT tokens are stateless, so this endpoint serves as
-    a confirmation. Client should discard stored tokens.
-    In production, implement token blacklisting with Redis.
+    Blacklists the active access token in Redis if available.
     """
+    if credentials and credentials.credentials:
+        try:
+            from app.core.redis import cache_set
+            from app.core.config import settings
+            token = credentials.credentials
+            ttl = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            await cache_set(f"revoked_token:{token}", True, expire=ttl)
+        except Exception:
+            pass
     return SuccessResponse(message="Logged out successfully")

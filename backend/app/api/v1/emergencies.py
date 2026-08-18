@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db, get_current_user, require_patient
+from app.api.deps import get_db, get_current_user, require_patient, require_responder
 from app.models.user import User
 from app.models.patient import Patient
 from app.models.hospital import Hospital
@@ -33,7 +33,11 @@ from app.schemas.common import (
 from app.core.exceptions import (
     NotFoundException,
     BadRequestException,
+    ForbiddenException,
 )
+from app.core.websockets import manager, create_notification
+from app.models.notification import NotificationType
+
 
 
 router = APIRouter(prefix="/emergencies", tags=["Emergencies"])
@@ -194,10 +198,59 @@ async def create_emergency(
         "hospital_state": hospital.state if hospital else None,
     }
 
+    # --------------------------------------------------------
+    # Real-Time Broadcast & Patient Notification
+    # --------------------------------------------------------
+    try:
+        await create_notification(
+            db=db,
+            user_id=current_user.id,
+            title="Emergency SOS Registered",
+            message=f"Your {emergency.emergency_type} emergency request (Level {emergency.severity}) has been registered.",
+            notification_type=NotificationType.EMERGENCY,
+            priority=emergency.severity,
+            action_url=f"/emergencies/{emergency.id}",
+            action_label="Track Emergency",
+            icon="ambulance",
+        )
+    except Exception:
+        pass
+
+    try:
+        await manager.broadcast(
+            {
+                "type": "emergency_created",
+                "data": {
+                    "id": str(emergency.id),
+                    "patient_id": str(emergency.patient_id),
+                    "emergency_type": emergency.emergency_type,
+                    "severity": emergency.severity,
+                    "status": (
+                        emergency.status.value
+                        if hasattr(emergency.status, "value")
+                        else str(emergency.status)
+                    ),
+                    "location_address": emergency.location_address,
+                    "location_lat": emergency.location_lat,
+                    "location_lng": emergency.location_lng,
+                    "hospital_id": emergency.hospital_id,
+                    "hospital_name": hospital.name if hospital else None,
+                    "requested_at": (
+                        emergency.requested_at.isoformat()
+                        if emergency.requested_at
+                        else None
+                    ),
+                },
+            }
+        )
+    except Exception:
+        pass
+
     return SuccessResponse(
         message="Emergency request created. Help is on the way!",
         data=response_data,
     )
+
 
 
 # ============================================================
@@ -444,10 +497,21 @@ async def get_active_emergencies(
                 active_statuses
             )
         )
-        .order_by(
-            EmergencyRequest.severity.desc(),
-            EmergencyRequest.requested_at,
+    )
+
+    # Scoping: Patients see only their own active emergency
+    if current_user.role.value == "patient":
+        patient_result = await db.execute(
+            select(Patient).where(Patient.user_id == current_user.id)
         )
+        patient = patient_result.scalar_one_or_none()
+        if not patient:
+            return SuccessResponse(data=[])
+        query = query.where(EmergencyRequest.patient_id == patient.id)
+
+    query = query.order_by(
+        EmergencyRequest.severity.desc(),
+        EmergencyRequest.requested_at,
     )
 
     result = await db.execute(query)
@@ -573,6 +637,15 @@ async def get_emergency(
 
     emergency, hospital = row
 
+    # Privacy check: Patients can only view their own emergency
+    if current_user.role.value == "patient":
+        patient_result = await db.execute(
+            select(Patient).where(Patient.user_id == current_user.id)
+        )
+        patient = patient_result.scalar_one_or_none()
+        if not patient or emergency.patient_id != patient.id:
+            raise ForbiddenException("You do not have permission to view this emergency")
+
     data = {
         "id": emergency.id,
         "patient_id": emergency.patient_id,
@@ -660,14 +733,14 @@ async def update_emergency(
 
     data: EmergencyUpdate,
 
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_responder),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
     """
     Update emergency request status and details.
 
-    Used by ambulance drivers, hospital admins,
-    and system services.
+    Used by ambulance drivers, doctors, hospital admins,
+    and government admins.
     """
 
     result = await db.execute(
@@ -783,9 +856,78 @@ async def update_emergency(
             hospital_result.scalar_one_or_none()
         )
 
+    # --------------------------------------------------------
+    # Real-Time Broadcast & Patient Notification
+    # --------------------------------------------------------
+    status_val = (
+        emergency.status.value
+        if hasattr(emergency.status, "value")
+        else emergency.status
+    )
+
+    try:
+        patient_res = await db.execute(
+            select(Patient).where(Patient.id == emergency.patient_id)
+        )
+        patient_obj = patient_res.scalar_one_or_none()
+        if patient_obj:
+            await create_notification(
+                db=db,
+                user_id=patient_obj.user_id,
+                title=f"Emergency Status: {status_val.replace('_', ' ').title()}",
+                message=f"Emergency dispatch status updated to '{status_val.replace('_', ' ')}'.",
+                notification_type=NotificationType.EMERGENCY,
+                priority=emergency.severity,
+                action_url=f"/emergencies/{emergency.id}",
+                action_label="View Details",
+                icon="activity",
+            )
+    except Exception:
+        pass
+
+    try:
+        status_update_event = {
+            "type": "emergency_status_updated",
+            "data": {
+                "id": str(emergency.id),
+                "patient_id": str(emergency.patient_id),
+                "ambulance_id": str(emergency.ambulance_id) if emergency.ambulance_id else None,
+                "hospital_id": str(emergency.hospital_id) if emergency.hospital_id else None,
+                "status": status_val,
+                "emergency_type": emergency.emergency_type,
+                "severity": emergency.severity,
+                "location_address": emergency.location_address,
+                "dispatched_at": (
+                    emergency.dispatched_at.isoformat()
+                    if emergency.dispatched_at
+                    else None
+                ),
+                "arrived_at": (
+                    emergency.arrived_at.isoformat()
+                    if emergency.arrived_at
+                    else None
+                ),
+                "resolved_at": (
+                    emergency.resolved_at.isoformat()
+                    if emergency.resolved_at
+                    else None
+                ),
+                "responder_notes": emergency.responder_notes,
+                "hospital_notes": emergency.hospital_notes,
+                "updated_at": (
+                    emergency.updated_at.isoformat()
+                    if emergency.updated_at
+                    else None
+                ),
+            },
+        }
+        await manager.broadcast_to_channel(status_update_event, f"emergency_{emergency.id}")
+        await manager.broadcast(status_update_event)
+    except Exception:
+        pass
+
     return SuccessResponse(
         message="Emergency request updated",
-
         data={
             "id": emergency.id,
             "patient_id": emergency.patient_id,
@@ -887,6 +1029,15 @@ async def cancel_emergency(
             emergency_id,
         )
 
+    # Ownership check: Patients can only cancel their own emergency
+    if current_user.role.value == "patient":
+        patient_result = await db.execute(
+            select(Patient).where(Patient.user_id == current_user.id)
+        )
+        patient = patient_result.scalar_one_or_none()
+        if not patient or emergency.patient_id != patient.id:
+            raise ForbiddenException("You do not have permission to cancel this emergency")
+
     if emergency.status in (
         EmergencyStatus.RESOLVED,
         EmergencyStatus.CANCELLED,
@@ -902,6 +1053,48 @@ async def cancel_emergency(
     )
 
     await db.flush()
+
+    # --------------------------------------------------------
+    # Real-Time Broadcast & Patient Notification
+    # --------------------------------------------------------
+    try:
+        patient_res = await db.execute(
+            select(Patient).where(Patient.id == emergency.patient_id)
+        )
+        patient_obj = patient_res.scalar_one_or_none()
+        if patient_obj:
+            await create_notification(
+                db=db,
+                user_id=patient_obj.user_id,
+                title="Emergency Cancelled",
+                message=f"Emergency request ({emergency.id[:8]}...) has been cancelled.",
+                notification_type=NotificationType.WARNING,
+                priority=emergency.severity,
+                action_url=f"/emergencies/{emergency.id}",
+                action_label="View Emergency",
+                icon="ban",
+            )
+    except Exception:
+        pass
+
+    try:
+        cancel_event = {
+            "type": "emergency_cancelled",
+            "data": {
+                "id": str(emergency.id),
+                "patient_id": str(emergency.patient_id),
+                "status": "cancelled",
+                "resolved_at": (
+                    emergency.resolved_at.isoformat()
+                    if emergency.resolved_at
+                    else None
+                ),
+            },
+        }
+        await manager.broadcast_to_channel(cancel_event, f"emergency_{emergency.id}")
+        await manager.broadcast(cancel_event)
+    except Exception:
+        pass
 
     return SuccessResponse(
         message="Emergency request cancelled"

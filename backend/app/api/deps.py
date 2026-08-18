@@ -53,6 +53,17 @@ async def get_current_user(
     if not payload:
         raise UnauthorizedException("Invalid or expired authentication token")
 
+    # Check if token is blacklisted/revoked in Redis
+    try:
+        from app.core.redis import cache_get
+        is_revoked = await cache_get(f"revoked_token:{token}")
+        if is_revoked:
+            raise UnauthorizedException("Token has been revoked")
+    except UnauthorizedException:
+        raise
+    except Exception:
+        pass
+
     user_id = payload.get("sub")
     if not user_id:
         raise UnauthorizedException("Invalid token payload")
@@ -110,3 +121,4 @@ require_hospital_admin = require_role(["hospital_admin"])
 require_government_admin = require_role(["government_admin"])
 require_any_admin = require_role(["hospital_admin", "government_admin"])
 require_medical_staff = require_role(["doctor", "hospital_admin"])
+require_responder = require_role(["ambulance_driver", "doctor", "hospital_admin", "government_admin"])

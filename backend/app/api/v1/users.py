@@ -125,13 +125,17 @@ async def get_user(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    """Get a user's profile by ID."""
+    """Get a user's profile by ID. Admin or self only."""
+    from app.core.exceptions import NotFoundException, ForbiddenException
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 
     if not user:
-        from app.core.exceptions import NotFoundException
         raise NotFoundException("User", user_id)
+
+    if current_user.id != user.id and current_user.role.value not in ("hospital_admin", "government_admin"):
+        raise ForbiddenException("You can only view your own user profile")
 
     return SuccessResponse(
         data=UserResponse.model_validate(user).model_dump(),

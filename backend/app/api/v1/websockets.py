@@ -17,21 +17,40 @@ from app.core.config import settings
 router = APIRouter(tags=["Realtime & Notifications"])
 
 
+from app.core.security import verify_access_token
+
+
 async def get_user_from_token(token: str, db: AsyncSession) -> User | None:
     """Helper to authenticate websocket connections via token query param."""
     try:
-        payload = jwt.decode(
-            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
-        )
+        payload = verify_access_token(token)
+        if not payload:
+            return None
+
+        # Check if token is blacklisted/revoked in Redis
+        try:
+            from app.core.redis import cache_get
+            is_revoked = await cache_get(f"revoked_token:{token}")
+            if is_revoked:
+                return None
+        except Exception:
+            pass
+
         user_id = payload.get("sub")
         if user_id is None:
             return None
             
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
-        return user
+        if user and user.is_active:
+            return user
+        return None
     except Exception:
         return None
+
+
+from app.models.patient import Patient
+from app.models.emergency import EmergencyRequest
 
 
 @router.websocket("/ws")
@@ -60,29 +79,73 @@ async def websocket_endpoint(
             if action == "subscribe_emergency":
                 emergency_id = data.get("emergency_id")
                 if emergency_id is not None:
-                    await manager.join_channel(websocket, f"emergency_{emergency_id}")
-            
-            elif action == "update_location":
-                # For ambulance drivers
+                    # Security check: verify user has permission to subscribe to this emergency
+                    is_authorized = True
+                    if user.role.value == "patient":
+                        patient_res = await db.execute(
+                            select(Patient).where(Patient.user_id == user.id)
+                        )
+                        patient = patient_res.scalar_one_or_none()
+                        if not patient:
+                            is_authorized = False
+                        else:
+                            em_res = await db.execute(
+                                select(EmergencyRequest).where(EmergencyRequest.id == str(emergency_id))
+                            )
+                            emergency = em_res.scalar_one_or_none()
+                            if not emergency or emergency.patient_id != patient.id:
+                                is_authorized = False
+
+                    if is_authorized:
+                        await manager.join_channel(websocket, f"emergency_{emergency_id}")
+                        await websocket.send_json({
+                            "type": "subscribed",
+                            "channel": f"emergency_{emergency_id}",
+                            "status": "success",
+                        })
+                    else:
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "Unauthorized to subscribe to this emergency channel",
+                        })
+
+            elif action == "unsubscribe_emergency":
                 emergency_id = data.get("emergency_id")
-                lat = data.get("lat")
-                lng = data.get("lng")
-                if emergency_id is not None and lat is not None and lng is not None:
-                    # Broadcast to everyone watching this emergency
-                    await manager.broadcast_to_channel(
-                        {
-                            "type": "location_update",
-                            "data": {"lat": lat, "lng": lng}
-                        },
-                        f"emergency_{emergency_id}"
-                    )
-            
+                if emergency_id is not None:
+                    manager.leave_channel(websocket, f"emergency_{emergency_id}")
+                    await websocket.send_json({
+                        "type": "unsubscribed",
+                        "channel": f"emergency_{emergency_id}",
+                        "status": "success",
+                    })
+
+            elif action == "update_location":
+                # For ambulance drivers and authorized responders
+                if user.role.value in ("ambulance_driver", "doctor", "hospital_admin", "government_admin"):
+                    emergency_id = data.get("emergency_id")
+                    lat = data.get("lat")
+                    lng = data.get("lng")
+                    if emergency_id is not None and lat is not None and lng is not None:
+                        # Broadcast to everyone watching this emergency
+                        await manager.broadcast_to_channel(
+                            {
+                                "type": "location_update",
+                                "data": {"lat": lat, "lng": lng}
+                            },
+                            f"emergency_{emergency_id}"
+                        )
+                else:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Unauthorized to broadcast location updates",
+                    })
+
             elif action == "ping":
                 await websocket.send_json({"type": "pong"})
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, str(user.id))
-        # Leave any channels if needed (simplified here)
+
 
 
 @router.get(

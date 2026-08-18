@@ -11,7 +11,7 @@
  */
 
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Shield,
@@ -62,12 +62,13 @@ export const DEMO_ACCOUNTS = {
   patient: {
     key: 'patient',
     role: 'Patient',
-    email: 'patient@aegisai.com',
+    email: 'arjun@aegisai.com',
     password: 'Patient@123',
     icon: UserRound,
     iconBg: 'rgba(16, 185, 129, 0.12)',
     iconColor: 'var(--success-400)',
   },
+
 
   doctor: {
     key: 'doctor',
@@ -100,10 +101,14 @@ export type DemoAccountKey = keyof typeof DEMO_ACCOUNTS;
 export default function LoginPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/dashboard';
 
   const { isLoading, error } = useAppSelector(
     (state) => state.auth
   );
+
 
   // ----------------------------------------------------------
   // FORM STATE
@@ -217,9 +222,10 @@ export default function LoginPage() {
     );
 
     if (loginUser.fulfilled.match(result)) {
-      navigate('/dashboard');
+      navigate(from, { replace: true });
     }
   };
+
 
 
   // ==========================================================

@@ -127,16 +127,19 @@ async def get_patient(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
-    """Get patient profile by ID."""
+    """Get patient profile by ID. Doctors, admins, or patient self only."""
     result = await db.execute(select(Patient).where(Patient.id == patient_id))
     patient = result.scalar_one_or_none()
 
     if not patient:
         raise NotFoundException("Patient", patient_id)
 
-    # Patients can only view their own profile unless admin/doctor
-    if (current_user.role.value == "patient" and patient.user_id != current_user.id):
-        raise ForbiddenException("You can only view your own profile")
+    # Patients can only view their own profile; Doctors and Admins have clinical/system access
+    if current_user.role.value == "patient":
+        if patient.user_id != current_user.id:
+            raise ForbiddenException("You can only view your own profile")
+    elif current_user.role.value not in ("doctor", "hospital_admin", "government_admin"):
+        raise ForbiddenException("You do not have permission to view patient profiles")
 
     return SuccessResponse(
         data=PatientProfileResponse.model_validate(patient).model_dump(),

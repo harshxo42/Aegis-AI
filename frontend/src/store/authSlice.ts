@@ -92,6 +92,19 @@ export const fetchCurrentUser = createAsyncThunk(
   }
 );
 
+export const logoutUser = createAsyncThunk(
+  'auth/logoutUser',
+  async (_, { dispatch }) => {
+    try {
+      await authAPI.logout();
+    } catch {
+      // Ignore network or token errors on logout so frontend always resets cleanly
+    } finally {
+      dispatch(logout());
+    }
+  }
+);
+
 // ── Slice ───────────────────────────────────────────────────────
 
 const authSlice = createSlice({
@@ -183,10 +196,25 @@ const authSlice = createSlice({
 
     // Fetch current user
     builder
+      .addCase(fetchCurrentUser.pending, (state) => {
+        state.isLoading = true;
+      })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        state.isLoading = false;
         state.user = action.payload;
+        if (state.accessToken && state.refreshToken) {
+          localStorage.setItem(
+            'aegis_auth',
+            JSON.stringify({
+              user: action.payload,
+              accessToken: state.accessToken,
+              refreshToken: state.refreshToken,
+            })
+          );
+        }
       })
       .addCase(fetchCurrentUser.rejected, (state) => {
+        state.isLoading = false;
         state.user = null;
         state.isAuthenticated = false;
         state.accessToken = null;

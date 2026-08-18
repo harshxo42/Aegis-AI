@@ -3,9 +3,10 @@
  * Clean, stable and responsive top navigation
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 
 import {
   Bell,
@@ -18,9 +19,11 @@ import {
 } from 'lucide-react';
 
 import { useAppSelector, useAppDispatch } from '@/store';
-import { logout } from '@/store/authSlice';
+import { logoutUser } from '@/store/authSlice';
 import { toggleSidebar } from '@/store/uiSlice';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { notificationsAPI } from '@/api/client';
+import { useWebSocket, type WebSocketEvent } from '@/hooks/useWebSocket';
 
 export default function Navbar() {
   const dispatch = useAppDispatch();
@@ -29,7 +32,9 @@ export default function Navbar() {
   const { user } = useAppSelector((state) => state.auth);
 
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
 
   const role = user?.role || 'patient';
 
@@ -98,14 +103,86 @@ export default function Navbar() {
   }, []);
 
   /* ----------------------------------------------------------
+     FETCH UNREAD NOTIFICATIONS & REAL-TIME WEBSOCKET
+     ---------------------------------------------------------- */
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchUnread = async () => {
+      try {
+        const res = await notificationsAPI.list();
+        const items = res?.data?.data || [];
+        if (isMounted && Array.isArray(items)) {
+          const unread = items.filter((n: any) => !n.is_read).length;
+          setUnreadCount(unread);
+        }
+      } catch {
+        // Silently handle
+      }
+    };
+    fetchUnread();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleWebSocketEvent = useCallback(
+    (event: WebSocketEvent) => {
+      if (event.type === 'notification' && event.data) {
+        const notif = event.data;
+        setUnreadCount((prev) => prev + 1);
+
+        toast(
+          (t) => (
+            <div
+              onClick={() => {
+                toast.dismiss(t.id);
+                if (notif.action_url) {
+                  navigate(notif.action_url);
+                } else {
+                  navigate('/notifications');
+                }
+              }}
+              className="cursor-pointer flex items-start gap-3 p-1"
+            >
+              <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Bell size={16} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold text-[var(--text-primary)]">
+                  {notif.title}
+                </div>
+                <div className="text-[11px] text-[var(--text-secondary)] truncate mt-0.5">
+                  {notif.message}
+                </div>
+              </div>
+            </div>
+          ),
+          {
+            duration: 5000,
+            position: 'top-right',
+          }
+        );
+      }
+    },
+    [navigate]
+  );
+
+  useWebSocket({
+    onEvent: handleWebSocketEvent,
+    enabled: !!user,
+  });
+
+  /* ----------------------------------------------------------
      ACTIONS
      ---------------------------------------------------------- */
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowUserMenu(false);
-    dispatch(logout());
+    await dispatch(logoutUser());
     navigate('/login');
   };
+
 
   const handleNotifications = () => {
     setShowUserMenu(false);
@@ -138,23 +215,27 @@ export default function Navbar() {
 
       <div className="aegis-navbar-left">
 
-        {/* MOBILE MENU */}
+        {/* MOBILE MENU TOGGLE */}
 
         <button
           type="button"
           onClick={handleMobileMenu}
-          aria-label="Open navigation menu"
-          className="navbar-mobile-toggle"
+          aria-label="Toggle navigation menu"
+          className="aegis-mobile-toggle"
         >
           <Menu
-            size={21}
-            strokeWidth={2}
+            size={20}
+            strokeWidth={1.9}
+            aria-hidden="true"
           />
         </button>
 
-        {/* SEARCH */}
+        {/* SEARCH BAR */}
 
-        <div className="aegis-search">
+        <div
+          role="search"
+          className="aegis-search-wrapper"
+        >
           <Search
             size={19}
             strokeWidth={1.9}
@@ -186,7 +267,7 @@ export default function Navbar() {
           type="button"
           onClick={handleNotifications}
           aria-label="Open notifications"
-          className="aegis-icon-button"
+          className="aegis-icon-button relative"
         >
           <Bell
             size={21}
@@ -194,10 +275,14 @@ export default function Navbar() {
             aria-hidden="true"
           />
 
-          <span
-            className="notification-dot"
-            aria-hidden="true"
-          />
+          {unreadCount > 0 && (
+            <span
+              className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center shadow-xs"
+              aria-label={`${unreadCount} unread notifications`}
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
         </button>
 
         {/* ==================================================

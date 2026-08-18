@@ -117,7 +117,7 @@ def client():
 @pytest.fixture(scope="module")
 def access_token(client: httpx.Client) -> str:
     if not EMAIL or not PASSWORD:
-        pytest.fail(
+        pytest.skip(
             "Missing SMOKE_EMAIL / SMOKE_PASSWORD. "
             "Set them in PowerShell before running production smoke tests."
         )

@@ -13,6 +13,7 @@
 
 import axios, {
   AxiosError,
+  type AxiosRequestHeaders,
   type InternalAxiosRequestConfig,
 } from 'axios';
 
@@ -179,6 +180,9 @@ api.interceptors.response.use(
           });
         }
       ).then((newAccessToken) => {
+        if (!originalRequest.headers) {
+          originalRequest.headers = {} as AxiosRequestHeaders;
+        }
         originalRequest.headers.Authorization =
           `Bearer ${newAccessToken}`;
 
@@ -300,6 +304,9 @@ api.interceptors.response.use(
       /*
        * Retry original request.
        */
+      if (!originalRequest.headers) {
+        originalRequest.headers = {} as AxiosRequestHeaders;
+      }
       originalRequest.headers.Authorization =
         `Bearer ${newAccessToken}`;
 
@@ -366,7 +373,11 @@ export const authAPI = {
         refresh_token: refreshToken,
       }
     ),
+
+  logout: () =>
+    api.post('/auth/logout'),
 };
+
 
 /* ============================================================
    USERS API

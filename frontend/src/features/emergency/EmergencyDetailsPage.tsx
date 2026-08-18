@@ -6,7 +6,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 import {
   Activity,
   AlertTriangle,
@@ -17,11 +18,16 @@ import {
   ShieldAlert,
   Ambulance,
   CheckCircle2,
+  Ban,
+  X,
+  AlertCircle,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 
 import { emergenciesAPI } from '@/api/client';
 import type { EmergencyRequest } from '@/types';
+import { useWebSocket, type WebSocketEvent } from '@/hooks/useWebSocket';
+
 
 const ACTIVE_STATUSES = [
   'requested',
@@ -68,6 +74,54 @@ export default function EmergencyDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  // Real-time WebSocket event listener
+  const handleWebSocketEvent = useCallback(
+    (event: WebSocketEvent) => {
+      if (!id) return;
+
+      if (
+        event.type === 'emergency_status_updated' &&
+        event.data &&
+        String(event.data.id) === String(id)
+      ) {
+        setEmergency((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            ...event.data,
+          };
+        });
+        const statusLabel = event.data.status?.replace('_', ' ') || 'updated';
+        toast.success(`Emergency status updated to ${statusLabel}`);
+      } else if (
+        event.type === 'emergency_cancelled' &&
+        event.data &&
+        String(event.data.id) === String(id)
+      ) {
+        setEmergency((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            status: 'cancelled',
+            resolved_at: event.data.resolved_at || new Date().toISOString(),
+          };
+        });
+        setShowCancelModal(false);
+        toast.error('This emergency request was cancelled.');
+      }
+    },
+    [id]
+  );
+
+  const { isConnected } = useWebSocket({
+    channels: id ? [`emergency_${id}`] : [],
+    onEvent: handleWebSocketEvent,
+    enabled: !!id,
+  });
+
 
   const fetchEmergency = useCallback(
     async (showRefreshLoader = false) => {
@@ -226,6 +280,25 @@ export default function EmergencyDetailsPage() {
     );
   }
 
+  const handleConfirmCancel = async () => {
+    if (!emergency || cancelling) return;
+    try {
+      setCancelling(true);
+      await emergenciesAPI.cancel(emergency.id);
+      toast.success('Emergency request cancelled successfully.');
+      setShowCancelModal(false);
+      await fetchEmergency(true);
+    } catch (err: any) {
+      console.error('Failed to cancel emergency:', err);
+      toast.error(
+        err?.response?.data?.message ||
+          'Failed to cancel emergency request. Please try again.'
+      );
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const statusColor = getStatusColor(emergency.status);
   const currentStep = getCurrentStep(emergency.status);
   const isActive = ACTIVE_STATUSES.includes(
@@ -234,7 +307,7 @@ export default function EmergencyDetailsPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-8">
-      {/* Back + Refresh */}
+      {/* Back + Actions */}
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -245,19 +318,44 @@ export default function EmergencyDetailsPage() {
           Back to Emergencies
         </button>
 
-        <button
-          type="button"
-          onClick={() => fetchEmergency(true)}
-          disabled={refreshing}
-          className="w-10 h-10 rounded-xl flex items-center justify-center border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all disabled:opacity-50"
-          title="Refresh status"
-        >
-          <RefreshCw
-            size={17}
-            className={refreshing ? 'animate-spin' : ''}
-          />
-        </button>
+        <div className="flex items-center gap-2.5">
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] shadow-2xs">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+              }`}
+            />
+            <span>{isConnected ? 'Live Sync' : 'Connecting...'}</span>
+          </div>
+
+          {isActive && (
+            <button
+              type="button"
+              onClick={() => setShowCancelModal(true)}
+              disabled={cancelling}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 disabled:opacity-50 shadow-xs cursor-pointer"
+            >
+              <Ban size={15} />
+              <span>Cancel Emergency</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => fetchEmergency(true)}
+            disabled={refreshing}
+            className="w-10 h-10 rounded-xl flex items-center justify-center border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-all disabled:opacity-50 cursor-pointer"
+            title="Refresh status"
+          >
+            <RefreshCw
+              size={17}
+              className={refreshing ? 'animate-spin' : ''}
+            />
+          </button>
+        </div>
       </div>
+
+
 
       {/* =====================================================
           MAIN HEADER
@@ -591,6 +689,92 @@ export default function EmergencyDetailsPage() {
           Emergency information refreshes automatically when status transitions occur or on manual refresh.
         </p>
       </div>
+
+      {/* =====================================================
+          CONFIRMATION MODAL
+      ====================================================== */}
+      <AnimatePresence>
+        {showCancelModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cancel-modal-title"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.18 }}
+              className="w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-xl overflow-hidden p-6 space-y-5"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-11 h-11 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle size={22} />
+                  </div>
+                  <div>
+                    <h3
+                      id="cancel-modal-title"
+                      className="text-base font-bold text-[var(--text-primary)]"
+                    >
+                      Cancel Emergency SOS?
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
+                      Are you sure you want to cancel this emergency request? Any active ambulance dispatch and hospital intake alert will be stood down immediately.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCancelModal(false)}
+                  disabled={cancelling}
+                  className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                  aria-label="Close dialog"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5">
+                <AlertCircle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <span>This action is permanent and cannot be undone. If you still require urgent assistance, keep the emergency active.</span>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={cancelling}
+                  onClick={() => setShowCancelModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-tertiary)] border border-[var(--border-color)] hover:bg-[var(--bg-hover)] transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  Keep Active
+                </button>
+
+                <button
+                  type="button"
+                  disabled={cancelling}
+                  onClick={handleConfirmCancel}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition-all flex items-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
+                >
+                  {cancelling ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Cancelling...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Ban size={14} />
+                      <span>Confirm Cancellation</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

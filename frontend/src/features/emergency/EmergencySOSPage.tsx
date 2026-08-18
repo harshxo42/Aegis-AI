@@ -5,7 +5,7 @@
  * Supports hospital selection, live GPS pinpointing, and instant ambulance dispatch.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
@@ -14,6 +14,7 @@ import { emergenciesAPI } from '@/api/client';
 import Map from '@/components/maps/Map';
 import { userLocationIcon } from '@/components/maps/MapIcons';
 import { Marker, Popup } from 'react-leaflet';
+import { reverseGeocode } from '@/utils/geocoding';
 
 import {
   AlertTriangle,
@@ -27,9 +28,10 @@ import {
   MapPin,
   Building2,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 
-import type { EmergencyType } from '@/types';
+import type { EmergencyType, EmergencyRequest } from '@/types';
 
 const emergencyTypes: {
   value: EmergencyType;
@@ -99,6 +101,9 @@ export default function EmergencySOSPage() {
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [activeEmergency, setActiveEmergency] = useState<EmergencyRequest | null>(null);
+  const [checkingActive, setCheckingActive] = useState(true);
+  const [geocoding, setGeocoding] = useState(false);
 
   const [formData, setFormData] = useState({
     hospital_id: navState?.hospitalId || '',
@@ -117,11 +122,76 @@ export default function EmergencySOSPage() {
       : 'idle'
   );
 
-  // -------------------------------
+  // ---------------------------------------------------------
+  // Check Existing Active Emergency (Duplicate SOS Guard)
+  // ---------------------------------------------------------
+  useEffect(() => {
+    let isMounted = true;
+    const checkExistingEmergency = async () => {
+      try {
+        setCheckingActive(true);
+        const res = await emergenciesAPI.getActive();
+        const data = res?.data?.data;
+        if (isMounted) {
+          if (Array.isArray(data) && data.length > 0) {
+            setActiveEmergency(data[0]);
+          } else {
+            setActiveEmergency(null);
+          }
+        }
+      } catch (err) {
+        console.warn('[Aegis AI] Failed to verify active emergency:', err);
+      } finally {
+        if (isMounted) {
+          setCheckingActive(false);
+        }
+      }
+    };
+
+    checkExistingEmergency();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // ---------------------------------------------------------
+  // Reverse Geocode Helper
+  // ---------------------------------------------------------
+  const performReverseGeocode = useCallback(
+    async (lat: number, lng: number) => {
+      try {
+        setGeocoding(true);
+        const addr = await reverseGeocode(lat, lng);
+        if (addr?.full) {
+          setFormData((prev) => {
+            // Only autofill if field is empty or was using default/passed address
+            if (
+              !prev.location_address ||
+              prev.location_address === navState?.hospitalAddress
+            ) {
+              return {
+                ...prev,
+                location_address: addr.full,
+              };
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        console.warn('[Aegis AI] Reverse geocoding failed silently:', err);
+      } finally {
+        setGeocoding(false);
+      }
+    },
+    [navState?.hospitalAddress]
+  );
+
+  // ---------------------------------------------------------
   // Auto Detect Location
-  // -------------------------------
+  // ---------------------------------------------------------
   useEffect(() => {
     if (typeof navState?.lat === 'number' && typeof navState?.lng === 'number') {
+      performReverseGeocode(navState.lat, navState.lng);
       return;
     }
 
@@ -134,12 +204,15 @@ export default function EmergencySOSPage() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
         setFormData((prev) => ({
           ...prev,
-          location_lat: position.coords.latitude,
-          location_lng: position.coords.longitude,
+          location_lat: lat,
+          location_lng: lng,
         }));
         setLocationStatus('success');
+        performReverseGeocode(lat, lng);
       },
       (err) => {
         console.warn('[Aegis AI] Geolocation access unavailable/denied:', err);
@@ -151,11 +224,11 @@ export default function EmergencySOSPage() {
         maximumAge: 0,
       }
     );
-  }, [navState]);
+  }, [navState, performReverseGeocode]);
 
-  // -------------------------------
+  // ---------------------------------------------------------
   // Map Selection
-  // -------------------------------
+  // ---------------------------------------------------------
   const handleLocationSelect = (lat: number, lng: number) => {
     setFormData((prev) => ({
       ...prev,
@@ -163,11 +236,12 @@ export default function EmergencySOSPage() {
       location_lng: lng,
     }));
     setLocationStatus('success');
+    performReverseGeocode(lat, lng);
   };
 
-  // -------------------------------
+  // ---------------------------------------------------------
   // Emergency Submit
-  // -------------------------------
+  // ---------------------------------------------------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
@@ -211,6 +285,84 @@ export default function EmergencySOSPage() {
   };
 
   const currentSeverity = SEVERITY_LEVELS[formData.severity] || SEVERITY_LEVELS[4];
+
+  // ---------------------------------------------------------
+  // Active Emergency Guard UI
+  // ---------------------------------------------------------
+  if (checkingActive) {
+    return (
+      <div className="max-w-4xl mx-auto py-16 flex flex-col items-center justify-center space-y-4">
+        <Loader2 className="w-9 h-9 text-rose-500 animate-spin" />
+        <p className="text-xs text-[var(--text-muted)] font-medium">Verifying active triage status...</p>
+      </div>
+    );
+  }
+
+  if (activeEmergency) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 pb-8">
+        <div className="bg-[var(--bg-card)] border border-rose-500/40 rounded-2xl p-6 sm:p-8 shadow-sm text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto shadow-xs">
+            <AlertTriangle size={32} />
+          </div>
+
+          <div className="space-y-2 max-w-md mx-auto">
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+              Active Emergency In Progress
+            </h1>
+            <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
+              You already have an active emergency request registered with our dispatch network. Creating duplicate requests is blocked to ensure responders reach you without routing conflicts.
+            </p>
+          </div>
+
+          <div className="p-4 bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border-color)] text-left max-w-md mx-auto space-y-2.5 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--text-muted)] font-semibold uppercase">Tracking ID</span>
+              <span className="font-mono font-bold text-[var(--text-primary)]">{activeEmergency.id.slice(0, 16)}...</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--text-muted)] font-semibold uppercase">Status</span>
+              <span className="font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+                {activeEmergency.status.replace(/_/g, ' ')}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--text-muted)] font-semibold uppercase">Category</span>
+              <span className="font-bold text-[var(--text-primary)] capitalize">
+                {activeEmergency.emergency_type} (Level {activeEmergency.severity} Priority)
+              </span>
+            </div>
+            {activeEmergency.location_address && (
+              <div className="flex items-start justify-between gap-2 pt-1 border-t border-[var(--border-color)]">
+                <span className="text-[var(--text-muted)] font-semibold uppercase flex-shrink-0">Location</span>
+                <span className="text-[var(--text-secondary)] truncate text-right">{activeEmergency.location_address}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => navigate(`/emergencies/${activeEmergency.id}`)}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-sm text-white bg-rose-600 hover:bg-rose-500 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+            >
+              <Ambulance size={17} />
+              <span>Track Active Emergency</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/emergencies')}
+              className="w-full sm:w-auto px-5 py-3 rounded-xl font-semibold text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-tertiary)] border border-[var(--border-color)] hover:bg-[var(--bg-hover)] transition-all cursor-pointer"
+            >
+              View All Emergencies
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-8">
@@ -485,9 +637,17 @@ export default function EmergencySOSPage() {
 
                   {/* ADDRESS / LANDMARK */}
                   <div>
-                    <label className="block text-xs font-bold uppercase text-[var(--text-muted)] mb-1.5">
-                      Street Address / Landmark (Optional)
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold uppercase text-[var(--text-muted)]">
+                        Street Address / Landmark (Optional)
+                      </label>
+                      {geocoding && (
+                        <span className="text-[11px] text-rose-500 dark:text-rose-400 flex items-center gap-1 font-medium">
+                          <Loader2 size={11} className="animate-spin" />
+                          <span>Resolving street address...</span>
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={formData.location_address}
@@ -501,6 +661,7 @@ export default function EmergencySOSPage() {
                       className="w-full px-4 py-2.5 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20"
                     />
                   </div>
+
 
                   {/* DESCRIPTION */}
                   <div>

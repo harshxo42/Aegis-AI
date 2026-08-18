@@ -1,4 +1,4 @@
-﻿aiofiles==24.1.0
+aiofiles==24.1.0
 aioredis==2.0.1
 aiosqlite==0.20.0
 alembic==1.13.2
@@ -73,3 +73,4 @@ openai>=1.40.0
 loguru==0.7.2
 slowapi==0.1.9
 prometheus-fastapi-instrumentator==7.0.0
+pypdf>=5.0.0

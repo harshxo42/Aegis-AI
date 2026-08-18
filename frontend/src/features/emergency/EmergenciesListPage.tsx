@@ -6,10 +6,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
+import { toast } from 'react-hot-toast';
 import { emergenciesAPI } from '@/api/client';
 import type { EmergencyRequest } from '@/types';
+import { useWebSocket, type WebSocketEvent } from '@/hooks/useWebSocket';
 import {
   AlertTriangle,
   MapPin,
@@ -17,6 +19,9 @@ import {
   Clock,
   ChevronRight,
   RefreshCw,
+  Ban,
+  X,
+  AlertCircle,
 } from 'lucide-react';
 import { useAppSelector } from '@/store';
 
@@ -41,6 +46,82 @@ export default function EmergenciesListPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] =
     useState<EmergencyFilter>('active');
+  const [emergencyToCancel, setEmergencyToCancel] = useState<EmergencyRequest | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+
+  // ---------------------------------------------------------
+  // Real-Time WebSocket Event Listener
+  // ---------------------------------------------------------
+  const handleWebSocketEvent = useCallback(
+    (event: WebSocketEvent) => {
+      if (!event.data) return;
+
+      if (event.type === 'emergency_created') {
+        const newEm = event.data as EmergencyRequest;
+        // Role check: If patient, only show if it belongs to patient
+        if (user?.role === 'patient' && newEm.patient_id && user.id) {
+          // If patient id doesn't match, ignore
+        }
+
+        setEmergencies((prev) => {
+          // Avoid duplicate emergency card
+          const exists = prev.some((item) => String(item.id) === String(newEm.id));
+          if (exists) {
+            return prev.map((item) =>
+              String(item.id) === String(newEm.id) ? { ...item, ...newEm } : item
+            );
+          }
+          if (filter === 'active' || filter === 'all') {
+            return [newEm, ...prev];
+          }
+          return prev;
+        });
+
+        if (user?.role !== 'patient') {
+          toast.success(
+            `New Emergency Dispatch: Level ${newEm.severity || ''} ${newEm.emergency_type || ''}`,
+            { icon: '🚨' }
+          );
+        }
+      } else if (event.type === 'emergency_status_updated') {
+        const updated = event.data;
+        setEmergencies((prev) =>
+          prev
+            .map((item) =>
+              String(item.id) === String(updated.id) ? { ...item, ...updated } : item
+            )
+            .filter((item) => {
+              if (filter === 'active') {
+                return ACTIVE_STATUSES.includes(item.status);
+              }
+              if (filter === 'resolved') {
+                return RESOLVED_STATUSES.includes(item.status);
+              }
+              return true;
+            })
+        );
+      } else if (event.type === 'emergency_cancelled') {
+        const cancelled = event.data;
+        setEmergencies((prev) =>
+          prev
+            .map((item) =>
+              String(item.id) === String(cancelled.id)
+                ? { ...item, status: 'cancelled' as const, resolved_at: cancelled.resolved_at }
+                : item
+            )
+            .filter((_item) => filter !== 'active')
+
+        );
+      }
+    },
+    [filter, user]
+  );
+
+  const { isConnected } = useWebSocket({
+    onEvent: handleWebSocketEvent,
+    enabled: true,
+  });
+
 
   // ---------------------------------------------------------
   // Fetch emergencies
@@ -117,6 +198,29 @@ export default function EmergenciesListPage() {
   const handleRefresh = () => {
     fetchEmergencies(true);
   };
+
+  // ---------------------------------------------------------
+  // Cancel Emergency
+  // ---------------------------------------------------------
+  const handleConfirmCancel = async () => {
+    if (!emergencyToCancel || cancelling) return;
+    try {
+      setCancelling(true);
+      await emergenciesAPI.cancel(emergencyToCancel.id);
+      toast.success('Emergency request cancelled successfully.');
+      setEmergencyToCancel(null);
+      await fetchEmergencies(true);
+    } catch (err: any) {
+      console.error('Failed to cancel emergency:', err);
+      toast.error(
+        err?.response?.data?.message ||
+          'Failed to cancel emergency request. Please try again.'
+      );
+    } finally {
+      setCancelling(false);
+    }
+  };
+
 
   // ---------------------------------------------------------
   // Status pill helper
@@ -218,6 +322,15 @@ export default function EmergenciesListPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] shadow-2xs">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+              }`}
+            />
+            <span>{isConnected ? 'Live Feed' : 'Connecting...'}</span>
+          </div>
+
           {/* Refresh */}
           <button
             type="button"
@@ -233,6 +346,7 @@ export default function EmergenciesListPage() {
               }
             />
           </button>
+
 
           {/* Filters */}
           <div className="flex flex-wrap gap-1 bg-[var(--bg-card)] p-1 rounded-xl border border-[var(--border-color)]">
@@ -404,7 +518,23 @@ export default function EmergenciesListPage() {
 
                   {/* Right content */}
                   <div className="flex items-center justify-between w-full md:w-auto md:flex-col md:items-end gap-2.5 border-t md:border-t-0 border-[var(--border-color)] pt-3 md:pt-0">
-                    {renderStatusBadge(emergency.status)}
+                    <div className="flex items-center gap-2">
+                      {ACTIVE_STATUSES.includes(emergency.status) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEmergencyToCancel(emergency);
+                          }}
+                          className="px-2.5 py-1 rounded-full text-xs font-bold transition-all border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center gap-1 cursor-pointer"
+                          title="Cancel this emergency request"
+                        >
+                          <Ban size={12} />
+                          <span>Cancel</span>
+                        </button>
+                      )}
+                      {renderStatusBadge(emergency.status)}
+                    </div>
 
                     <span
                       className="flex items-center gap-1 text-xs text-[var(--primary-500)] font-semibold group-hover:underline"
@@ -419,6 +549,92 @@ export default function EmergenciesListPage() {
           })
         )}
       </div>
+
+      {/* =====================================================
+          CONFIRMATION MODAL
+      ====================================================== */}
+      <AnimatePresence>
+        {emergencyToCancel && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cancel-list-modal-title"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.18 }}
+              className="w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl shadow-xl overflow-hidden p-6 space-y-5"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-11 h-11 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle size={22} />
+                  </div>
+                  <div>
+                    <h3
+                      id="cancel-list-modal-title"
+                      className="text-base font-bold text-[var(--text-primary)]"
+                    >
+                      Cancel Emergency SOS?
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
+                      Are you sure you want to cancel emergency <span className="font-mono font-bold text-[var(--text-primary)]">{emergencyToCancel.id.slice(0, 8)}...</span>? Any active responder dispatch will be cancelled immediately.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setEmergencyToCancel(null)}
+                  disabled={cancelling}
+                  className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                  aria-label="Close dialog"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5">
+                <AlertCircle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <span>This action is permanent. If you still need urgent medical assistance, keep the emergency active.</span>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={cancelling}
+                  onClick={() => setEmergencyToCancel(null)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-tertiary)] border border-[var(--border-color)] hover:bg-[var(--bg-hover)] transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  Keep Active
+                </button>
+
+                <button
+                  type="button"
+                  disabled={cancelling}
+                  onClick={handleConfirmCancel}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 transition-all flex items-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
+                >
+                  {cancelling ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Cancelling...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Ban size={14} />
+                      <span>Confirm Cancellation</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
