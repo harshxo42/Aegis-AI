@@ -60,7 +60,7 @@ services:
       - ./backend/.env
 
     environment:
-      DATABASE_URL: "postgresql+asyncpg://aegis:%40Lex20032@postgres:5432/aegis_ai"
+      DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: "redis://redis:6379/0"
       HOST: "0.0.0.0"
       PORT: "8000"
