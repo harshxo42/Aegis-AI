@@ -1,83 +1,325 @@
 # Aegis AI — Emergency Healthcare Response Platform
 
-Aegis AI is a comprehensive, full-stack emergency healthcare platform designed to streamline emergency response, triage, and medical facility coordination. It leverages modern web technologies and AI to provide real-time insights, interactive location-based services, and intelligent healthcare assistance.
+Aegis AI is a full-stack emergency healthcare platform that combines AI-assisted healthcare workflows, emergency response, hospital services, maps, analytics, secure authentication, and role-based access control into a single web application.
 
-## 🚀 Key Features
+## Core Features
 
-*   **Emergency SOS Workflow:** Rapid dispatch and routing for emergency situations with live Leaflet-based geolocation for hospitals, ambulances, and patients.
-*   **Intelligent Triage & AI Predictions:** Secure, server-side AI integration using the OpenAI API to analyze symptoms and provide non-diagnostic medical guidance and triage prioritization.
-*   **AI Healthcare Assistant:** An interactive conversational interface for medical guidance, securely powered by the backend without exposing API keys.
-*   **Role-Based Access Control:** Distinct workflows for patients, hospitals, and ambulance services.
-*   **Real-time Availability:** Live tracking of hospital bed availability, ICU capacity, and ambulance dispatch status.
-*   **Responsive UI:** A production-ready, glassmorphism-inspired design system built with React, Tailwind CSS, and Framer Motion, ensuring usability across mobile, tablet, and desktop devices.
-*   **Secure & Scalable Backend:** A robust FastAPI backend with PostgreSQL, Redis, and strict JWT-based authentication.
+### Emergency & SOS Management
 
-## 🏗️ Architecture & Tech Stack
+* Emergency creation and management
+* Hospital and ambulance workflows
+* Location-aware emergency response
+* Real-time communication infrastructure
 
-Aegis AI follows a modern, decoupled architecture:
+### AI Healthcare Assistant
 
+* AI-powered healthcare conversations
+* Server-side AI integration
+* Safety-focused, non-diagnostic responses
+* Emergency escalation guidance
+
+### AI Medical Report Analysis
+
+* PDF medical report upload
+* PDF text extraction
+* AI-assisted report analysis
+* Medical and non-medical document handling
+
+### Search & Healthcare Discovery
+
+* Healthcare-related search
+* Hospital discovery
+* Patient and doctor workflows
+
+### Authentication & RBAC
+
+* JWT-based authentication
+* Role-based authorization
+* Protected API routes
+* Redis-backed token revocation
+
+### Hospital & Patient Management
+
+* Hospital information
+* Departments and doctors
+* Patient workflows
+* Hospital availability functionality
+
+### Maps & Location Services
+
+* Interactive maps using Leaflet
+* Location-based healthcare services
+* Hospital and emergency location workflows
+
+### Analytics
+
+* Healthcare and operational analytics
+* Dashboard visualizations using Recharts
+
+### Responsive UI
+
+* Modern React interface
+* Responsive layouts
+* Tailwind CSS
+* Framer Motion animations
+* Interactive notifications and UI components
+
+## Architecture
+
+```text
+React Frontend
+     │
+     │ HTTPS / REST
+     ▼
+FastAPI Backend
+     │
+     ├──────────────► Database
+     │
+     ├──────────────► Redis
+     │                 └── Token Revocation
+     │
+     ├──────────────► AI Provider
+     │                 └── OpenRouter
+     │
+     └──────────────► Celery
+                       └── Background Processing
 ```
-Frontend (React)  ==[HTTPS/REST]==>  Backend (FastAPI)  ====>  PostgreSQL / Redis
-                                            |
-                                            ====>  AI Service (OpenAI)
+
+## Technology Stack
+
+### Frontend
+
+* React 19
+* TypeScript
+* Vite
+* Tailwind CSS
+* Framer Motion
+* Redux Toolkit
+* TanStack React Query
+* React Router
+* Axios
+* Leaflet / React-Leaflet
+* Recharts
+* React Markdown
+* Lucide React
+* React Icons
+
+### Backend
+
+* Python
+* FastAPI
+* SQLAlchemy
+* Alembic
+* Redis
+* Celery
+* Pydantic
+* JWT / Python-JOSE
+* bcrypt
+* pypdf
+* OpenAI Python SDK
+* Prometheus FastAPI Instrumentator
+* Uvicorn
+
+
+
+## Security
+
+Aegis AI keeps sensitive operations on the backend and applies multiple security controls:
+
+* JWT-based authentication
+* Role-based access control
+* Protected API routes
+* Redis-backed token revocation
+* Secure password hashing with bcrypt
+* Server-side AI API integration
+* CORS configuration
+* SQLAlchemy ORM
+* Environment-based secrets
+* AI API keys are not exposed to the frontend
+
+### Token Revocation
+
+When a user logs out, the active access token is revoked through the backend and Redis-backed invalidation mechanism.
+
+A previously issued token is rejected after logout instead of remaining usable until normal expiration.
+
+## AI Integration
+
+AI requests are handled server-side through the FastAPI backend.
+
+The frontend does not directly expose AI provider credentials.
+
+AI functionality includes:
+
+* Healthcare assistant conversations
+* AI-assisted predictions and triage support
+* Medical report analysis
+* PDF-based report processing
+* Safety-oriented, non-diagnostic guidance
+
+AI-generated information is intended as assistance and does not replace professional medical diagnosis or emergency medical care.
+
+## Medical Report Processing
+
+The medical report workflow supports PDF uploads and server-side processing.
+
+Production verification included:
+
+* Medical PDF testing
+* Additional medical PDF testing
+* Non-medical PDF testing
+* Additional non-medical PDF testing
+
+The tested inputs produced the expected application behavior.
+
+## Testing
+
+The backend currently has:
+
+* **246 automated tests**
+* **93% test coverage**
+* GitHub CI verification
+
+Testing covers important areas including:
+
+* Authentication
+* Authorization / RBAC
+* AI functionality
+* PDF processing
+* Emergency workflows
+* Hospital functionality
+* API validation
+* Security behavior
+* Error handling
+
+Major frontend production workflows have also been smoke-tested.
+
+## Production Deployment
+
+### Frontend
+
+Deployed on **Vercel**.
+
+### Backend
+
+Deployed on **Render**.
+
+Production health verification confirms that the backend is running successfully in the production environment.
+
+## Local Development
+
+### Prerequisites
+
+* Node.js
+* Python 3.10+
+* Docker / Docker Compose
+* PostgreSQL
+* Redis
+
+### Backend
+
+```bash
+cd backend
+
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Linux/macOS
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+Configure environment variables using:
+
+```text
+backend/.env.example
+```
+
+Run migrations:
+
+```bash
+alembic upgrade head
+```
+
+Start the backend:
+
+```bash
+uvicorn app.main:app --reload
 ```
 
 ### Frontend
-*   **Framework:** React 18, TypeScript, Vite
-*   **Styling:** Tailwind CSS, Framer Motion, CSS Variables for theming
-*   **State Management:** Redux Toolkit
-*   **Routing:** React Router v6
-*   **Maps:** Leaflet & React-Leaflet
-*   **Deployment:** Vercel
 
-### Backend
-*   **Framework:** FastAPI, Python 3
-*   **Database:** PostgreSQL (SQLAlchemy ORM, Alembic migrations)
-*   **Caching & Queue:** Redis
-*   **AI Integration:** Official `AsyncOpenAI` Python SDK configured for OpenRouter (Server-Side Only)
-*   **Authentication:** JWT (JSON Web Tokens) with refresh token rotation
+```bash
+cd frontend
+npm install
+```
 
-## 🤖 AI Integration & Security
+Configure:
 
-Aegis AI integrates the OpenRouter API strictly through the FastAPI backend to ensure maximum security.
-*   **No API keys** are ever exposed to the frontend or committed to source control.
-*   The AI operates as an assistant, strictly adhering to a safety-first system prompt that emphasizes emergency redirection and non-definitive diagnosis.
+```text
+VITE_API_URL=http://localhost:8000
+```
 
-## 🛠️ Local Development Setup
+Start the development server:
 
-### Prerequisites
-*   Node.js 18+
-*   Python 3.10+
-*   Docker & Docker Compose (for database/Redis)
+```bash
+npm run dev
+```
 
-### Backend Setup
-1.  Navigate to the backend directory: `cd backend`
-2.  Create a virtual environment: `python -m venv venv`
-3.  Activate the environment: `source venv/bin/activate` (or `venv\Scripts\activate` on Windows)
-4.  Install dependencies: `pip install -r requirements.txt`
-5.  Create a `.env` file based on `.env.example` and add your `OPENROUTER_API_KEY`.
-6.  Start Docker services (PostgreSQL & Redis): `docker-compose up -d`
-7.  Run migrations: `alembic upgrade head`
-8.  Start the server: `uvicorn app.main:app --reload`
+### Frontend Build
 
-### Frontend Setup
-1.  Navigate to the frontend directory: `cd frontend`
-2.  Install dependencies: `npm install`
-3.  Create a `.env` file containing `VITE_API_URL=http://localhost:8000`
-4.  Start the development server: `npm run dev`
+```bash
+npm run build
+```
 
-## 🧪 Testing
+### Frontend Lint
 
-*   **Backend:** Run `pytest` in the `backend` directory.
-*   **Frontend:** The frontend is statically typed with strict TypeScript checks (`npm run build`).
+```bash
+npm run lint
+```
 
-## 🔒 Security
+### Backend Tests
 
-*   CORS is strictly configured on the backend.
-*   All routes are protected by robust JWT validation and role-based guards.
-*   Database interaction uses SQLAlchemy ORM to prevent SQL injection.
+```bash
+cd backend
+pytest
+```
 
-## 🔮 Future Improvements
-*   Real-time WebSockets for live ambulance tracking and instant notifications.
-*   Production OCR integration for automated medical report parsing.
-*   Multilingual support for accessibility in diverse regions.
+For coverage:
+
+```bash
+pytest --cov=app --cov-report=term-missing
+```
+
+
+## Project Structure
+
+```text
+Aegis AI/
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   │   └── v1/
+│   │   ├── core/
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   └── services/
+│   ├── alembic/
+│   ├── tests/
+│   ├── Dockerfile
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── src/
+│   ├── public/
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── Dockerfile
+│
+├── docs/
+├── scripts/
+├── docker-compose.yml
+└── README.md
