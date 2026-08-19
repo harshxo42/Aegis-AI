@@ -1,4 +1,5 @@
 import io
+import json
 
 import pytest
 from httpx import AsyncClient
@@ -930,3 +931,162 @@ async def test_ai_chat_provider_exception(client: AsyncClient, monkeypatch, mock
     )
     assert response.status_code == 502
     assert "provider error" in response.json()["message"]
+
+
+@pytest.mark.asyncio
+async def test_ai_chat_permission_denied_error(client: AsyncClient, monkeypatch, mock_openrouter_env):
+    """Test when OpenRouter raises PermissionDeniedError (403)."""
+    mock_client_instance = MagicMock()
+    mock_client_instance.chat.completions.create = AsyncMock(
+        side_effect=openai.PermissionDeniedError(
+            message="Forbidden model",
+            response=MagicMock(status_code=403),
+            body=None,
+        )
+    )
+    monkeypatch.setattr("app.api.v1.ai.AsyncOpenAI", lambda **kw: mock_client_instance)
+
+    token = await authenticated_client_token(client, "ai-chat-perm@test.com")
+    response = await client.post(
+        "/api/v1/ai/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"message": "Hello"},
+    )
+    assert response.status_code == 403
+    assert "access denied" in response.json()["message"]
+
+
+@pytest.mark.asyncio
+async def test_ai_chat_unexpected_exception(client: AsyncClient, monkeypatch, mock_openrouter_env):
+    """Test when unexpected exception occurs during chat."""
+    mock_client_instance = MagicMock()
+    mock_client_instance.chat.completions.create = AsyncMock(side_effect=RuntimeError("Unexpected crash"))
+    monkeypatch.setattr("app.api.v1.ai.AsyncOpenAI", lambda **kw: mock_client_instance)
+
+    token = await authenticated_client_token(client, "ai-chat-unexp@test.com")
+    response = await client.post(
+        "/api/v1/ai/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"message": "Hello"},
+    )
+    assert response.status_code == 500
+    assert "temporarily unavailable" in response.json()["message"]
+
+
+@pytest.mark.asyncio
+async def test_ai_predict_real_llm_branches(monkeypatch, mock_openrouter_env):
+    """Test analyze_symptoms with use_real_llm=True across success and exception paths."""
+    from app.api.v1.ai import MedicalAIService
+
+    # 1. Success path
+    service = MedicalAIService()
+    mock_completion = MagicMock()
+    mock_choice = MagicMock()
+    mock_choice.message.content = json.dumps({
+        "disease": "Acute Pharyngitis",
+        "confidence": 85.0,
+        "action": "Warm saline gargle and rest.",
+        "triage": "LOW"
+    })
+    mock_completion.choices = [mock_choice]
+    service.client.chat.completions.create = AsyncMock(return_value=mock_completion)
+
+    res = await service.analyze_symptoms("sore throat and mild fever", 25, "male", None)
+    assert res["disease"] == "Acute Pharyngitis"
+    assert res["confidence"] == 85.0
+    assert res["triage"] == "LOW"
+
+    # 2. OpenRouter AuthenticationError fallback
+    service.client.chat.completions.create = AsyncMock(
+        side_effect=openai.AuthenticationError("Invalid API key", response=MagicMock(status_code=401), body=None)
+    )
+    res_auth = await service.analyze_symptoms("fever and cough", 30, "female", None)
+    assert res_auth["disease"] == "Possible Viral Respiratory Infection"
+
+    # 3. OpenRouter RateLimitError fallback
+    service.client.chat.completions.create = AsyncMock(
+        side_effect=openai.RateLimitError("Quota exceeded", response=MagicMock(status_code=429), body=None)
+    )
+    res_rate = await service.analyze_symptoms("headache", 40, "male", None)
+    assert res_rate["disease"] == "Possible Headache / Migraine"
+
+    # 4. OpenRouter APITimeoutError fallback
+    service.client.chat.completions.create = AsyncMock(
+        side_effect=openai.APITimeoutError(request=MagicMock())
+    )
+    res_timeout = await service.analyze_symptoms("headache", 40, "male", None)
+    assert res_timeout["disease"] == "Possible Headache / Migraine"
+
+    # 5. OpenRouter APIError fallback
+    service.client.chat.completions.create = AsyncMock(
+        side_effect=openai.APIError("API down", request=MagicMock(), body=None)
+    )
+    res_api = await service.analyze_symptoms("headache", 40, "male", None)
+    assert res_api["disease"] == "Possible Headache / Migraine"
+
+    # 6. Generic exception fallback
+    service.client.chat.completions.create = AsyncMock(side_effect=Exception("Unknown error"))
+    res_generic = await service.analyze_symptoms("stomach ache", 20, "female", None)
+    assert res_generic["disease"] == "Unknown / General Symptoms"
+
+
+@pytest.mark.asyncio
+async def test_ai_report_document_analysis_branches(monkeypatch, mock_openrouter_env):
+    """Test analyze_medical_document branches: scanned PDF, corrupted PDF, vision LLM, and unsupported types."""
+    from app.api.v1.ai import MedicalAIService
+
+    service = MedicalAIService()
+
+    # 1. Short text classification check
+    assert service._classify_is_medical_text("") is False
+    assert service._classify_is_medical_text("short") is False
+
+    # 2. Corrupted PDF handling
+    res_corrupted = await service.analyze_medical_document(
+        b"not a valid pdf content",
+        "corrupted.pdf",
+        "application/pdf",
+    )
+    assert res_corrupted.is_unreadable is True
+    assert res_corrupted.is_medical_report is False
+
+    # 3. Unsupported file type
+    res_unsupported = await service.analyze_medical_document(
+        b"some text data",
+        "archive.zip",
+        "application/zip",
+    )
+    assert res_unsupported.is_unreadable is True
+    assert res_unsupported.is_medical_report is False
+
+    # 4. Real LLM text report analysis success & failure
+    mock_completion = MagicMock()
+    mock_choice = MagicMock()
+    mock_choice.message.content = json.dumps({
+        "summary": "Clinical panel from AI",
+        "key_metrics": [{"metric": "Glucose", "value": "100", "unit": "mg/dL", "status": "Normal", "reference_range": "70-99"}],
+        "findings": ["Normal blood sugar"],
+        "recommendations": "Routine follow up",
+        "is_medical_report": True,
+        "is_unreadable": False
+    })
+    mock_completion.choices = [mock_choice]
+    service.client.chat.completions.create = AsyncMock(return_value=mock_completion)
+
+    res_llm_text = await service._analyze_extracted_text("Patient John Doe. Glucose 100 mg/dL normal range.", "report.pdf")
+    assert res_llm_text.is_medical_report is True
+    assert len(res_llm_text.key_metrics) == 1
+
+    # Text report analysis LLM failure fallback
+    service.client.chat.completions.create = AsyncMock(side_effect=Exception("LLM down"))
+    res_fallback_text = await service._analyze_extracted_text("Patient John Doe. Glucose 100 mg/dL normal range.", "report.pdf")
+    assert res_fallback_text.is_medical_report is True
+
+    # 5. Image analysis with Real LLM success & failure
+    service.client.chat.completions.create = AsyncMock(return_value=mock_completion)
+    res_image = await service.analyze_medical_document(b"fake_image_bytes", "scan.png", "image/png")
+    assert res_image.is_medical_report is True
+
+    service.client.chat.completions.create = AsyncMock(side_effect=Exception("Vision down"))
+    res_image_fallback = await service.analyze_medical_document(b"fake_image_bytes", "scan.png", "image/png")
+    assert "scan.png" in res_image_fallback.summary

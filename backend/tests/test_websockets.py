@@ -330,3 +330,207 @@ def test_disconnect_channel_cleanup():
 
     assert user_id not in manager.active_connections
     assert channel_id not in manager.channels
+
+
+# ============================================================
+# NOTIFICATIONS API TESTS
+# ============================================================
+
+@pytest.mark.asyncio
+async def test_notifications_api_lifecycle(client, db_session):
+    user_a = await create_user(db_session, f"notif-a-{datetime.now().timestamp()}@test.com", UserRole.PATIENT)
+    user_b = await create_user(db_session, f"notif-b-{datetime.now().timestamp()}@test.com", UserRole.PATIENT)
+
+    token_a = create_access_token(str(user_a.id), user_a.role.value)
+
+    # Create notifications
+    n1 = await create_notification(db_session, str(user_a.id), "Title 1", "Message 1", NotificationType.INFO)
+    n2 = await create_notification(db_session, str(user_a.id), "Title 2", "Message 2", NotificationType.EMERGENCY)
+    n_other = await create_notification(db_session, str(user_b.id), "Other Title", "Other Msg", NotificationType.INFO)
+
+    # 1. Fetch user_a notifications
+    res = await client.get("/api/v1/notifications", headers={"Authorization": f"Bearer {token_a}"})
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert len(data) == 2
+    titles = [item["title"] for item in data]
+    assert "Title 1" in titles
+    assert "Title 2" in titles
+    assert "Other Title" not in titles
+
+    # 2. Mark n1 as read
+    res_read = await client.put(f"/api/v1/notifications/{n1.id}/read", headers={"Authorization": f"Bearer {token_a}"})
+    assert res_read.status_code == 200
+    assert res_read.json()["message"] == "Notification marked as read"
+
+    # Verify in DB
+    refreshed = (await db_session.execute(select(Notification).where(Notification.id == n1.id))).scalar_one()
+    assert refreshed.is_read is True
+
+    # 3. Mark non-existent notification as read (graceful handling)
+    res_non_existent = await client.put("/api/v1/notifications/non-existent-id-999/read", headers={"Authorization": f"Bearer {token_a}"})
+    assert res_non_existent.status_code == 200
+
+
+# ============================================================
+# WEBSOCKET HELPER & TOKEN AUTHENTICATION BRANCHES
+# ============================================================
+
+@pytest.mark.asyncio
+async def test_get_user_from_token_revoked_or_invalid(db_session):
+    from unittest.mock import patch, AsyncMock
+    from app.api.v1.websockets import get_user_from_token
+
+    user = await create_user(db_session, f"token-check-{datetime.now().timestamp()}@test.com", UserRole.PATIENT)
+    valid_token = create_access_token(str(user.id), user.role.value)
+
+    # 1. Revoked token in Redis
+    with patch("app.core.redis.cache_get", new_callable=AsyncMock) as mock_cache:
+        mock_cache.return_value = True
+        u = await get_user_from_token(valid_token, db_session)
+        assert u is None
+
+    # 2. Token without sub
+    with patch("app.api.v1.websockets.verify_access_token") as mock_verify:
+        mock_verify.return_value = {"role": "patient"}
+        u = await get_user_from_token("token-no-sub", db_session)
+        assert u is None
+
+    # 3. Deactivated user in DB
+    user.is_active = False
+    await db_session.flush()
+    u = await get_user_from_token(valid_token, db_session)
+    assert u is None
+
+
+# ============================================================
+# WEBSOCKET ACTIONS: UNSUBSCRIBE & LOCATION UPDATES
+# ============================================================
+
+@pytest.mark.asyncio
+async def test_websocket_unsubscribe_emergency(db_session):
+    driver = await create_user(db_session, f"ws-unsub-{datetime.now().timestamp()}@test.com", UserRole.AMBULANCE_DRIVER)
+    token = create_access_token(str(driver.id), driver.role.value)
+
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        client = TestClient(app)
+        with client.websocket_connect(f"/ws?token={token}") as ws:
+            ws.send_json({
+                "action": "subscribe_emergency",
+                "emergency_id": "test-em-1",
+            })
+            resp1 = ws.receive_json()
+            assert resp1.get("type") == "subscribed"
+
+            ws.send_json({
+                "action": "unsubscribe_emergency",
+                "emergency_id": "test-em-1",
+            })
+            resp2 = ws.receive_json()
+            assert resp2.get("type") == "unsubscribed"
+            assert resp2.get("status") == "success"
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_websocket_location_update_authorization(db_session):
+    driver = await create_user(db_session, f"ws-loc-driver-{datetime.now().timestamp()}@test.com", UserRole.AMBULANCE_DRIVER)
+    patient_user, patient = await create_patient_with_user(db_session, f"ws-loc-patient-{datetime.now().timestamp()}@test.com")
+
+    driver_token = create_access_token(str(driver.id), driver.role.value)
+    patient_token = create_access_token(str(patient_user.id), patient_user.role.value)
+
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        client = TestClient(app)
+        # 1. Driver allowed to broadcast location
+        with client.websocket_connect(f"/ws?token={driver_token}") as ws_driver:
+            ws_driver.send_json({
+                "action": "update_location",
+                "emergency_id": "test-em-loc",
+                "lat": 28.6139,
+                "lng": 77.2090,
+            })
+            # No error sent to driver; location broadcast sent to channel
+
+        # 2. Patient rejected from broadcasting location
+        with client.websocket_connect(f"/ws?token={patient_token}") as ws_patient:
+            ws_patient.send_json({
+                "action": "update_location",
+                "emergency_id": "test-em-loc",
+                "lat": 28.6139,
+                "lng": 77.2090,
+            })
+            resp = ws_patient.receive_json()
+            assert resp.get("type") == "error"
+            assert "Unauthorized" in resp.get("message", "")
+    finally:
+        app.dependency_overrides.clear()
+
+
+# ============================================================
+# CONNECTION MANAGER UNIT & RESILIENCY TESTS
+# ============================================================
+
+@pytest.mark.asyncio
+async def test_connection_manager_local_fallbacks_and_dead_sockets():
+    import json
+    from unittest.mock import patch, MagicMock, AsyncMock
+
+    class MockWorkingSocket:
+        def __init__(self):
+            self.sent = []
+        async def send_json(self, data):
+            self.sent.append(data)
+
+    class MockBrokenSocket:
+        async def send_json(self, data):
+            raise RuntimeError("Broken connection")
+
+    working_sock = MockWorkingSocket()
+    broken_sock = MockBrokenSocket()
+
+    user_id = "test-mgr-user"
+    channel_id = "test-mgr-channel"
+
+    manager.active_connections[user_id] = [working_sock, broken_sock]
+    manager.channels[channel_id] = [working_sock, broken_sock]
+
+    # Test send_personal_message with Redis failure triggering fallback
+    with patch("app.core.websockets.get_redis", side_effect=Exception("Redis down")):
+        await manager.send_personal_message({"msg": "hello"}, user_id)
+        assert len(working_sock.sent) == 1
+        assert broken_sock not in manager.active_connections[user_id]
+
+    # Test broadcast with Redis failure triggering fallback
+    manager.active_connections[user_id] = [working_sock, broken_sock]
+    with patch("app.core.websockets.get_redis", side_effect=Exception("Redis down")):
+        await manager.broadcast({"msg": "broadcast_hello"})
+        assert len(working_sock.sent) == 2
+        assert broken_sock not in manager.active_connections[user_id]
+
+    # Test broadcast_to_channel with Redis failure triggering fallback
+    manager.channels[channel_id] = [working_sock, broken_sock]
+    with patch("app.core.websockets.get_redis", side_effect=Exception("Redis down")):
+        await manager.broadcast_to_channel({"msg": "channel_hello"}, channel_id)
+        assert len(working_sock.sent) == 3
+        assert broken_sock not in manager.channels[channel_id]
+
+    # Test channel deletion when only dead sockets remain
+    manager.channels["dead-only-channel"] = [broken_sock]
+    await manager._local_broadcast_to_channel({"msg": "test"}, "dead-only-channel")
+    assert "dead-only-channel" not in manager.channels
+
+    # Test join/leave channel
+    await manager.join_channel(working_sock, "new-ch")
+    assert working_sock in manager.channels["new-ch"]
+    manager.leave_channel(working_sock, "new-ch")
+    assert "new-ch" not in manager.channels

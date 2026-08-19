@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from app.core.database import Base
 from app.api.deps import get_db
@@ -19,6 +20,7 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_aegis.db"
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
     echo=False,
+    poolclass=NullPool,
 )
 
 

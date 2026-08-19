@@ -565,3 +565,179 @@ async def test_cancel_emergency_not_found(db_session):
             current_user=user,
             db=db_session,
         )
+
+
+# ============================================================
+# HOSPITAL VALIDATION ON CREATION TESTS
+# ============================================================
+
+@pytest.mark.asyncio
+async def test_create_emergency_with_hospital_branches(db_session):
+    from app.models.hospital import Hospital
+
+    user, patient = await create_test_patient(db_session)
+
+    # 1. Hospital not found
+    data_bad_id = EmergencyCreate(
+        emergency_type="cardiac",
+        severity=4,
+        location_lat=28.6139,
+        location_lng=77.2090,
+        hospital_id="nonexistent-hospital-id",
+    )
+    with pytest.raises(NotFoundException):
+        await create_emergency(data=data_bad_id, current_user=user, db=db_session)
+
+    # 2. Inactive hospital
+    inactive_hosp = Hospital(
+        name="Inactive Hospital",
+        phone="9876543210",
+        address="Test Addr",
+        city="Delhi",
+        state="Delhi",
+        pincode="110001",
+        has_emergency=True,
+        is_active=False,
+    )
+    db_session.add(inactive_hosp)
+    await db_session.flush()
+
+    data_inactive = EmergencyCreate(
+        emergency_type="cardiac",
+        severity=4,
+        location_lat=28.6139,
+        location_lng=77.2090,
+        hospital_id=str(inactive_hosp.id),
+    )
+    with pytest.raises(BadRequestException) as exc_inactive:
+        await create_emergency(data=data_inactive, current_user=user, db=db_session)
+    assert "inactive" in str(exc_inactive.value.message)
+
+    # 3. Hospital without emergency services
+    no_em_hosp = Hospital(
+        name="No Emergency Clinic",
+        phone="9876543210",
+        address="Test Addr 2",
+        city="Delhi",
+        state="Delhi",
+        pincode="110001",
+        has_emergency=False,
+        is_active=True,
+    )
+    db_session.add(no_em_hosp)
+    await db_session.flush()
+
+    data_no_em = EmergencyCreate(
+        emergency_type="cardiac",
+        severity=4,
+        location_lat=28.6139,
+        location_lng=77.2090,
+        hospital_id=str(no_em_hosp.id),
+    )
+    with pytest.raises(BadRequestException) as exc_no_em:
+        await create_emergency(data=data_no_em, current_user=user, db=db_session)
+    assert "emergency services" in str(exc_no_em.value.message)
+
+    # 4. Valid hospital
+    valid_hosp = Hospital(
+        name="Apollo City Hospital",
+        phone="9876543210",
+        address="Main Ring Road",
+        city="Delhi",
+        state="Delhi",
+        pincode="110001",
+        has_emergency=True,
+        is_active=True,
+    )
+    db_session.add(valid_hosp)
+    await db_session.flush()
+
+    data_valid = EmergencyCreate(
+        emergency_type="cardiac",
+        severity=4,
+        location_lat=28.6139,
+        location_lng=77.2090,
+        hospital_id=str(valid_hosp.id),
+    )
+    res = await create_emergency(data=data_valid, current_user=user, db=db_session)
+    assert res.data["hospital_id"] == str(valid_hosp.id)
+    assert res.data["hospital_name"] == "Apollo City Hospital"
+
+
+@pytest.mark.asyncio
+async def test_cancel_emergency_by_other_patient_forbidden(db_session):
+    from app.core.exceptions import ForbiddenException
+
+    user_a, patient_a = await create_test_patient(db_session)
+    user_b, _ = await create_test_patient(db_session)
+
+    emergency = await create_test_emergency(db_session, patient_a.id)
+
+    with pytest.raises(ForbiddenException) as exc_info:
+        await cancel_emergency(
+            emergency_id=emergency.id,
+            current_user=user_b,
+            db=db_session,
+        )
+    assert "permission" in exc_info.value.message.lower()
+
+
+@pytest.mark.asyncio
+async def test_list_emergencies_additional_filters(db_session):
+    """Test list_emergencies with status and severity filters."""
+    admin = User(
+        email=f"admin-filter-{datetime.now().timestamp()}@test.com",
+        password_hash="hash",
+        full_name="Admin User",
+        role=UserRole.GOVERNMENT_ADMIN,
+        is_active=True,
+    )
+    db_session.add(admin)
+    await db_session.flush()
+
+    user, patient = await create_test_patient(db_session)
+    em = EmergencyRequest(
+        patient_id=patient.id,
+        emergency_type="cardiac",
+        severity=5,
+        status=EmergencyStatus.REQUESTED,
+        location_lat=28.6139,
+        location_lng=77.2090,
+        location_address="Delhi",
+        requested_at=datetime.now(timezone.utc),
+    )
+    db_session.add(em)
+    await db_session.flush()
+
+    # Filter by severity=5 — should find at least our record
+    res_sev = await list_emergencies(
+        page=1,
+        per_page=20,
+        status=None,
+        severity=5,
+        current_user=admin,
+        db=db_session,
+    )
+    assert res_sev.pagination.total >= 1
+
+    # Filter by status=REQUESTED
+    res_status = await list_emergencies(
+        page=1,
+        per_page=20,
+        status="REQUESTED",
+        severity=None,
+        current_user=admin,
+        db=db_session,
+    )
+    assert res_status.pagination.total >= 1
+
+    # Filter by non-matching (severity=1, status=RESOLVED) — should return 0
+    res_none = await list_emergencies(
+        page=1,
+        per_page=20,
+        status="RESOLVED",
+        severity=1,
+        current_user=admin,
+        db=db_session,
+    )
+    assert res_none.pagination.total == 0
