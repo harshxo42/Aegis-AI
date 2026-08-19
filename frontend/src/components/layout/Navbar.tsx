@@ -33,7 +33,26 @@ export default function Navbar() {
 
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [searchQuery, setSearchQuery] = useState('');
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      return;
+    }
+    navigate(`/hospitals?search=${encodeURIComponent(trimmed)}`);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearch();
+    }
+  };
 
 
   const role = user?.role || 'patient';
@@ -232,8 +251,9 @@ export default function Navbar() {
 
         {/* SEARCH BAR */}
 
-        <div
+        <form
           role="search"
+          onSubmit={handleSearch}
           className="aegis-search"
         >
           <Search
@@ -245,11 +265,14 @@ export default function Navbar() {
 
           <input
             type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
             placeholder="Search anything..."
             aria-label="Search anything"
             autoComplete="off"
           />
-        </div>
+        </form>
       </div>
 
 

@@ -21,7 +21,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 import {
@@ -129,17 +129,36 @@ function getHospitalId(hospital: Hospital): string {
 
 export default function HospitalsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const querySearch = searchParams.get('search') || searchParams.get('q') || '';
 
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
-  const [search, setSearch] = useState('');
-  const [cityFilter, setCityFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
+  const [search, setSearch] = useState(querySearch);
+  const [cityFilter, setCityFilter] = useState(searchParams.get('city') || '');
+  const [typeFilter, setTypeFilter] = useState(searchParams.get('hospital_type') || '');
 
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState(querySearch.trim());
+
+  /* ==========================================================
+     SYNC SEARCH PARAMS FROM URL
+  ========================================================== */
+
+  useEffect(() => {
+    const urlQuery = searchParams.get('search') || searchParams.get('q') || '';
+    setSearch(urlQuery);
+    setDebouncedSearch(urlQuery.trim());
+
+    const urlCity = searchParams.get('city') || '';
+    setCityFilter(urlCity);
+
+    const urlType = searchParams.get('hospital_type') || '';
+    setTypeFilter(urlType);
+  }, [searchParams]);
 
   /* ==========================================================
      DEBOUNCE SEARCH
@@ -273,14 +292,17 @@ export default function HospitalsPage() {
 
   const clearFilters = () => {
     setSearch('');
+    setDebouncedSearch('');
     setCityFilter('');
     setTypeFilter('');
+    setSearchParams({}, { replace: true });
   };
 
   const hasFilters = Boolean(
     search.trim() ||
       cityFilter ||
-      typeFilter
+      typeFilter ||
+      searchParams.toString()
   );
 
   /* ==========================================================
@@ -486,9 +508,19 @@ export default function HospitalsPage() {
             {search && (
               <button
                 type="button"
-                onClick={() =>
-                  setSearch('')
-                }
+                onClick={() => {
+                  setSearch('');
+                  setDebouncedSearch('');
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.delete('search');
+                      next.delete('q');
+                      return next;
+                    },
+                    { replace: true }
+                  );
+                }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-white/5"
                 aria-label="Clear search"
               >
