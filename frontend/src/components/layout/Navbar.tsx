@@ -234,10 +234,10 @@ export default function Navbar() {
 
         <div
           role="search"
-          className="aegis-search-wrapper"
+          className="aegis-search"
         >
           <Search
-            size={19}
+            size={18}
             strokeWidth={1.9}
             className="aegis-search-icon"
             aria-hidden="true"
@@ -251,6 +251,7 @@ export default function Navbar() {
           />
         </div>
       </div>
+
 
       {/* ======================================================
           RIGHT SIDE

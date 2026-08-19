@@ -1848,23 +1848,33 @@ textarea::placeholder {
 .aegis-search-icon {
   flex-shrink: 0;
   color: var(--text-muted);
+  pointer-events: none;
 }
 
 .aegis-search input {
   width: 100%;
   min-width: 0;
   height: 100%;
-  border: none;
-  outline: none;
-  background: transparent;
+  padding: 0;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
   color: var(--text-primary);
   font-family: inherit;
   font-size: 13.5px;
 }
 
+.aegis-search input:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .aegis-search input::placeholder {
   color: var(--text-muted);
 }
+
 
 /* ============================================================
    NOTIFICATION

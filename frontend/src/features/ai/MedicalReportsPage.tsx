@@ -16,15 +16,38 @@ import {
   RefreshCw,
   Sparkles,
   FileType,
+  AlertTriangle,
+  FileX,
+  CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { aiAPI } from '@/api/client';
+
+interface ReportMetric {
+  metric: string;
+  value: string;
+  unit?: string | null;
+  status?: string;
+  reference_range?: string | null;
+  normal_range?: string | null;
+}
+
+interface MedicalReportAnalysis {
+  summary: string;
+  key_metrics?: ReportMetric[];
+  findings?: string[];
+  recommendations?: string;
+  is_unreadable?: boolean;
+  is_medical_report?: boolean;
+  disclaimer?: string;
+}
 
 export default function MedicalReportsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<MedicalReportAnalysis | null>(null);
+  const [analyzedFileName, setAnalyzedFileName] = useState<string | null>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -63,8 +86,16 @@ export default function MedicalReportsPage() {
       return;
     }
 
+    // Reset previous analysis state to prevent data leakage
     setFile(selectedFile);
     setResult(null);
+    setAnalyzedFileName(null);
+  };
+
+  const handleClear = () => {
+    setFile(null);
+    setResult(null);
+    setAnalyzedFileName(null);
   };
 
   const handleUpload = async () => {
@@ -72,19 +103,34 @@ export default function MedicalReportsPage() {
 
     try {
       setLoading(true);
+      setResult(null);
+      setAnalyzedFileName(null);
+
       const formData = new FormData();
       formData.append('file', file);
 
       const response = await aiAPI.analyzeReport(formData);
+      const analysisData: MedicalReportAnalysis = response.data?.data?.analysis;
 
-      setResult(response.data.data.analysis);
-      toast.success('Report analyzed successfully');
+      setResult(analysisData);
+      setAnalyzedFileName(file.name);
+
+      if (analysisData?.is_medical_report === false || analysisData?.is_unreadable) {
+        toast.error('Uploaded file is not a supported medical report');
+      } else {
+        toast.success('Report analyzed successfully');
+      }
     } catch (error: any) {
+      setResult(null);
+      setAnalyzedFileName(null);
       toast.error(error.response?.data?.message || 'Failed to analyze report');
     } finally {
       setLoading(false);
     }
   };
+
+  const isNonMedicalOrUnreadable =
+    result && (result.is_medical_report === false || result.is_unreadable === true);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-8">
@@ -184,10 +230,7 @@ export default function MedicalReportsPage() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setFile(null);
-                      setResult(null);
-                    }}
+                    onClick={handleClear}
                     title="Remove selected file"
                     aria-label="Remove selected file"
                     className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
@@ -223,15 +266,27 @@ export default function MedicalReportsPage() {
         <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl flex flex-col overflow-hidden shadow-xs min-h-[420px]">
           <div className="p-5 sm:p-6 border-b border-[var(--border-color)] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400" />
+              {isNonMedicalOrUnreadable ? (
+                <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400" />
+              ) : (
+                <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400" />
+              )}
               <h2 className="text-base font-bold text-[var(--text-primary)]">
-                Extracted Clinical Findings
+                {isNonMedicalOrUnreadable
+                  ? 'Document Validation Result'
+                  : 'Extracted Clinical Findings'}
               </h2>
             </div>
 
             {result && (
-              <span className="text-[11px] font-semibold text-[var(--text-muted)]">
-                Analysis Complete
+              <span
+                className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${
+                  isNonMedicalOrUnreadable
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                }`}
+              >
+                {isNonMedicalOrUnreadable ? 'Unsupported File' : 'Analysis Complete'}
               </span>
             )}
           </div>
@@ -256,12 +311,61 @@ export default function MedicalReportsPage() {
                   Extracting Clinical Entities...
                 </p>
                 <p className="text-xs text-[var(--text-muted)] mt-1 max-w-xs">
-                  Running optical character recognition and named-entity normalization.
+                  Running optical character recognition and domain verification.
                 </p>
               </div>
             )}
 
-            {result && !loading && (
+            {/* NON-MEDICAL OR UNREADABLE DOCUMENT STATE */}
+            {result && !loading && isNonMedicalOrUnreadable && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="space-y-4"
+              >
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5">
+                      <FileX size={20} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                        {result.is_unreadable
+                          ? 'Unreadable / Blank Document'
+                          : 'Not a Medical Report'}
+                      </h3>
+                      <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
+                        {result.summary}
+                      </p>
+                    </div>
+                  </div>
+
+                  {analyzedFileName && (
+                    <div className="text-[11px] font-medium text-amber-800/80 dark:text-amber-300/80 pt-2 border-t border-amber-500/20">
+                      Evaluated document: <span className="font-semibold">{analyzedFileName}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)] space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                    <AlertCircle size={14} className="text-blue-500" />
+                    Required Action
+                  </h4>
+                  <p className="text-xs sm:text-sm text-[var(--text-primary)] leading-relaxed">
+                    {result.recommendations ||
+                      'Please upload a legitimate clinical laboratory report, pathology panel, or medical diagnostic document (PDF, JPG, PNG).'}
+                  </p>
+                </div>
+
+                <div className="text-[11px] text-center text-[var(--text-muted)] pt-3 border-t border-[var(--border-color)] leading-snug">
+                  * Safety Notice: Clinical biomarker extraction is restricted strictly to verified diagnostic medical documents.
+                </div>
+              </motion.div>
+            )}
+
+            {/* VALID MEDICAL REPORT CLINICAL FINDINGS */}
+            {result && !loading && !isNonMedicalOrUnreadable && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -269,7 +373,8 @@ export default function MedicalReportsPage() {
               >
                 {/* SUMMARY */}
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2 flex items-center gap-1.5">
+                    <CheckCircle2 size={14} className="text-emerald-500" />
                     Executive Clinical Summary
                   </h3>
                   <div className="p-4 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)]">
@@ -284,57 +389,68 @@ export default function MedicalReportsPage() {
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2.5">
                     Extracted Lab & Clinical Metrics
                   </h3>
-                  <div className="space-y-2.5">
-                    {result.key_metrics?.map((metric: any, index: number) => {
-                      const isNormal = metric.status?.toLowerCase() === 'normal';
-                      return (
-                        <div
-                          key={index}
-                          className="p-3 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)] flex items-center justify-between gap-3 shadow-2xs"
-                        >
-                          <div className="min-w-0">
-                            <p className="font-bold text-xs sm:text-sm text-[var(--text-primary)]">
-                              {metric.metric}
-                            </p>
-                            <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                              Reference Interval: {metric.normal_range}
-                            </p>
-                          </div>
+                  {result.key_metrics && result.key_metrics.length > 0 ? (
+                    <div className="space-y-2.5">
+                      {result.key_metrics.map((metric: ReportMetric, index: number) => {
+                        const isNormal = metric.status?.toLowerCase() === 'normal';
+                        const refRange = metric.normal_range || metric.reference_range;
+                        return (
+                          <div
+                            key={index}
+                            className="p-3 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)] flex items-center justify-between gap-3 shadow-2xs"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-bold text-xs sm:text-sm text-[var(--text-primary)]">
+                                {metric.metric}
+                              </p>
+                              {refRange && (
+                                <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                                  Reference Interval: {refRange}
+                                </p>
+                              )}
+                            </div>
 
-                          <div className="text-right flex-shrink-0">
-                            <p className="font-bold text-xs sm:text-sm text-[var(--text-primary)]">
-                              {metric.value}
-                            </p>
-                            <span
-                              className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 border ${
-                                isNormal
-                                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                                  : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
-                              }`}
-                            >
-                              {metric.status}
-                            </span>
+                            <div className="text-right flex-shrink-0">
+                              <p className="font-bold text-xs sm:text-sm text-[var(--text-primary)]">
+                                {metric.value} {metric.unit || ''}
+                              </p>
+                              <span
+                                className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-0.5 border ${
+                                  isNormal
+                                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                                    : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                                }`}
+                              >
+                                {metric.status || 'Normal'}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-xs text-[var(--text-muted)]">
+                      No numerical laboratory biomarkers were identified in this document.
+                    </div>
+                  )}
                 </div>
 
                 {/* RECOMMENDATIONS */}
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">
-                    Clinical Guidance & Follow-up
-                  </h3>
-                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25">
-                    <div className="flex gap-2.5 items-start">
-                      <AlertCircle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-xs sm:text-sm leading-relaxed text-amber-800 dark:text-amber-300">
-                        {result.recommendations}
-                      </p>
+                {result.recommendations && (
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">
+                      Clinical Guidance & Follow-up
+                    </h3>
+                    <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/25">
+                      <div className="flex gap-2.5 items-start">
+                        <AlertCircle size={18} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs sm:text-sm leading-relaxed text-blue-900 dark:text-blue-200">
+                          {result.recommendations}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div className="text-[11px] text-center text-[var(--text-muted)] pt-3 border-t border-[var(--border-color)] leading-snug">
                   * Clinical Records Notice: OCR extractions should be verified against original physical medical records.

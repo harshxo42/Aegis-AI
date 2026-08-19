@@ -515,7 +515,7 @@ async def test_ai_report_analysis_different_pdf_content(client: AsyncClient):
     assert "Hemoglobin" in metric_names
 @pytest.mark.asyncio
 async def test_ai_report_analysis_non_medical_project_pdf(client: AsyncClient):
-    """Non-medical PDF (e.g. Major Project Report) must NOT produce fabricated lab metrics."""
+    """Non-medical PDF (e.g. Major Project Report) must be classified as non-medical and NOT produce fabricated lab metrics."""
     token = await authenticated_client_token(client, "ai-project-doc@test.com")
 
     pdf_bytes = create_sample_pdf([
@@ -535,13 +535,42 @@ async def test_ai_report_analysis_non_medical_project_pdf(client: AsyncClient):
     body = response.json()
     analysis = body["data"]["analysis"]
 
-    # Must NOT contain fabricated lab measurements
+    # Must be identified as non-medical report
+    assert analysis["is_medical_report"] is False
     assert isinstance(analysis["key_metrics"], list)
     assert len(analysis["key_metrics"]) == 0
 
     # Must contain clinical disclaimer
     assert "disclaimer" in analysis
     assert "Clinical Disclaimer" in analysis["disclaimer"]
+
+
+@pytest.mark.asyncio
+async def test_ai_report_analysis_non_medical_with_colon_patterns(client: AsyncClient):
+    """Non-medical PDF with colon/key-value patterns must NOT extract pseudo lab metrics."""
+    token = await authenticated_client_token(client, "ai-colon-patterns@test.com")
+
+    pdf_bytes = create_sample_pdf([
+        "CS Project Documentation",
+        "Chapter 1: System Overview",
+        "Version: 2.1",
+        "Author: John Smith",
+        "Group: 4",
+        "Score: 95",
+    ])
+
+    response = await client.post(
+        "/api/v1/ai/analyze-report",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("project_spec.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    analysis = body["data"]["analysis"]
+
+    assert analysis["is_medical_report"] is False
+    assert len(analysis["key_metrics"]) == 0
 
 
 @pytest.mark.asyncio
