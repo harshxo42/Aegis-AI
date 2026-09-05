@@ -1,13 +1,14 @@
 /**
  * Aegis AI – Login Page
  *
- * Premium login page with:
- * - Demo account quick-fill
+ * Premium authentication page with:
+ * - Secure email/password login
  * - Password visibility toggle
  * - Loading state
  * - Error handling
  * - Responsive glassmorphism UI
  * - Redux authentication integration
+ * - Registration link
  */
 
 import { useState } from 'react';
@@ -21,77 +22,11 @@ import {
   EyeOff,
   ArrowRight,
   AlertCircle,
-  CheckCircle2,
-  UserRound,
-  Stethoscope,
-  ShieldCheck,
-  Building2,
-  Ambulance,
   RotateCcw,
 } from 'lucide-react';
 
 import { useAppDispatch, useAppSelector } from '@/store';
 import { loginUser, clearError } from '@/store/authSlice';
-
-
-// ============================================================
-// DEMO ACCOUNTS
-// ============================================================
-
-export const DEMO_ACCOUNTS = {
-  admin: {
-    key: 'admin',
-    role: 'Admin',
-    email: 'admin@aegisai.com',
-    password: 'Admin@123',
-    icon: ShieldCheck,
-    iconBg: 'rgba(59, 130, 246, 0.12)',
-    iconColor: 'var(--primary-400)',
-  },
-
-  hospital_admin: {
-    key: 'hospital_admin',
-    role: 'Hospital Admin',
-    email: 'hospital@aegisai.com',
-    password: 'Hospital@123',
-    icon: Building2,
-    iconBg: 'rgba(139, 92, 246, 0.12)',
-    iconColor: '#a855f7',
-  },
-
-  patient: {
-    key: 'patient',
-    role: 'Patient',
-    email: 'arjun@aegisai.com',
-    password: 'Patient@123',
-    icon: UserRound,
-    iconBg: 'rgba(16, 185, 129, 0.12)',
-    iconColor: 'var(--success-400)',
-  },
-
-
-  doctor: {
-    key: 'doctor',
-    role: 'Doctor',
-    email: 'dr.mehta@aegisai.com',
-    password: 'Doctor@123',
-    icon: Stethoscope,
-    iconBg: 'rgba(56, 189, 248, 0.12)',
-    iconColor: '#38bdf8',
-  },
-
-  driver: {
-    key: 'driver',
-    role: 'Driver',
-    email: 'driver1@aegisai.com',
-    password: 'Driver@123',
-    icon: Ambulance,
-    iconBg: 'rgba(245, 158, 11, 0.12)',
-    iconColor: 'var(--warning-400)',
-  },
-} as const;
-
-export type DemoAccountKey = keyof typeof DEMO_ACCOUNTS;
 
 
 // ============================================================
@@ -103,16 +38,18 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/dashboard';
+  const from =
+    (location.state as { from?: { pathname?: string } })?.from
+      ?.pathname || '/dashboard';
 
   const { isLoading, error } = useAppSelector(
     (state) => state.auth
   );
 
 
-  // ----------------------------------------------------------
+  // ==========================================================
   // FORM STATE
-  // ----------------------------------------------------------
+  // ==========================================================
 
   const [formData, setFormData] = useState({
     email: '',
@@ -120,8 +57,6 @@ export default function LoginPage() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
-
-  const [selectedDemo, setSelectedDemo] = useState<DemoAccountKey | null>(null);
 
 
   // ==========================================================
@@ -135,8 +70,6 @@ export default function LoginPage() {
       ...prev,
       email: e.target.value,
     }));
-
-    setSelectedDemo(null);
 
     if (error) {
       dispatch(clearError());
@@ -152,31 +85,9 @@ export default function LoginPage() {
       password: e.target.value,
     }));
 
-    setSelectedDemo(null);
-
     if (error) {
       dispatch(clearError());
     }
-  };
-
-
-  // ==========================================================
-  // DEMO ACCOUNT QUICK FILL
-  // ==========================================================
-
-  const fillDemoAccount = (
-    accountType: DemoAccountKey
-  ) => {
-    const account = DEMO_ACCOUNTS[accountType];
-
-    setFormData({
-      email: account.email,
-      password: account.password,
-    });
-
-    setSelectedDemo(accountType);
-
-    dispatch(clearError());
   };
 
 
@@ -189,8 +100,6 @@ export default function LoginPage() {
       email: '',
       password: '',
     });
-
-    setSelectedDemo(null);
 
     dispatch(clearError());
   };
@@ -227,7 +136,6 @@ export default function LoginPage() {
   };
 
 
-
   // ==========================================================
   // UI
   // ==========================================================
@@ -245,10 +153,11 @@ export default function LoginPage() {
           background: 'var(--bg-primary)',
         }}
       >
+
         {/* Gradient mesh */}
         <div className="absolute inset-0 gradient-mesh" />
 
-        {/* Blue animated glow */}
+        {/* Primary animated glow */}
         <motion.div
           className="absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full opacity-20 blur-3xl pointer-events-none"
           style={{
@@ -285,6 +194,7 @@ export default function LoginPage() {
             ease: 'easeInOut',
           }}
         />
+
       </div>
 
 
@@ -405,42 +315,6 @@ export default function LoginPage() {
 
 
           {/* =================================================
-              DEMO SELECTED MESSAGE
-          ================================================= */}
-
-          {selectedDemo && !error && (
-            <motion.div
-              initial={{
-                opacity: 0,
-                y: -8,
-              }}
-              animate={{
-                opacity: 1,
-                y: 0,
-              }}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl mb-6"
-              style={{
-                background:
-                  'rgba(16, 185, 129, 0.08)',
-                border:
-                  '1px solid rgba(16, 185, 129, 0.25)',
-                color: 'var(--success-400)',
-              }}
-            >
-              <CheckCircle2
-                size={17}
-                className="flex-shrink-0"
-              />
-
-              <span className="text-sm">
-                {DEMO_ACCOUNTS[selectedDemo].role} demo
-                credentials filled. Click Sign In.
-              </span>
-            </motion.div>
-          )}
-
-
-          {/* =================================================
               LOGIN FORM
           ================================================= */}
 
@@ -547,7 +421,6 @@ export default function LoginPage() {
                   onChange={handlePasswordChange}
                   placeholder="Enter your password"
                   required
-                  minLength={6}
                   disabled={isLoading}
                   className="w-full rounded-xl text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-[var(--primary-500)] disabled:opacity-60"
                   style={{
@@ -706,135 +579,6 @@ export default function LoginPage() {
             )}
 
           </form>
-
-
-          {/* =================================================
-              DEMO ACCOUNTS
-          ================================================= */}
-
-          <div
-            className="mt-6 p-4 sm:p-5 rounded-2xl"
-            style={{
-              background:
-                'rgba(59, 130, 246, 0.05)',
-              border:
-                '1px solid rgba(59, 130, 246, 0.18)',
-            }}
-          >
-
-            {/* Header */}
-
-            <div className="flex items-center justify-between gap-2 mb-3.5">
-
-              <span
-                className="text-xs font-semibold tracking-wider uppercase"
-                style={{
-                  color:
-                    'var(--primary-400)',
-                }}
-              >
-                Demo Accounts
-              </span>
-
-              <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded-md tracking-wider uppercase flex-shrink-0"
-                style={{
-                  background:
-                    'rgba(245, 158, 11, 0.15)',
-                  color:
-                    'var(--warning-400)',
-                  border:
-                    '1px solid rgba(245, 158, 11, 0.3)',
-                }}
-              >
-                Demo Only
-              </span>
-
-            </div>
-
-
-            {/* Demo Accounts List */}
-            <div className="flex flex-col gap-2">
-              {Object.values(DEMO_ACCOUNTS).map((account) => {
-                const IconComponent = account.icon;
-                const isSelected = selectedDemo === account.key;
-
-                return (
-                  <button
-                    key={account.key}
-                    type="button"
-                    onClick={() => fillDemoAccount(account.key)}
-                    disabled={isLoading}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed text-left"
-                    style={{
-                      background: isSelected
-                        ? 'rgba(59, 130, 246, 0.15)'
-                        : 'rgba(31, 41, 55, 0.65)',
-                      border: isSelected
-                        ? '1px solid rgba(59, 130, 246, 0.5)'
-                        : '1px solid rgba(75, 85, 99, 0.25)',
-                    }}
-                  >
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{
-                        background: account.iconBg,
-                        color: account.iconColor,
-                      }}
-                    >
-                      <IconComponent size={18} />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div
-                        className="font-medium text-xs truncate"
-                        style={{
-                          color: 'var(--text-primary)',
-                        }}
-                      >
-                        {account.role}
-                      </div>
-
-                      <div
-                        className="font-mono text-[11px] truncate mt-0.5"
-                        style={{
-                          color: 'var(--text-muted)',
-                        }}
-                      >
-                        {account.email}
-                      </div>
-                    </div>
-
-                    {isSelected && (
-                      <CheckCircle2
-                        size={18}
-                        style={{
-                          color: 'var(--success-400)',
-                        }}
-                        className="flex-shrink-0"
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-
-            {/* Warning */}
-
-            <p
-              className="text-[11px] text-center mt-4 leading-relaxed"
-              style={{
-                color:
-                  'rgba(251, 113, 133, 0.85)',
-              }}
-            >
-              Demo accounts are for testing only.
-              Never use real credentials on demo
-              environments.
-            </p>
-
-          </div>
 
 
           {/* =================================================
