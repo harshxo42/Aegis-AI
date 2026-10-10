@@ -24,12 +24,21 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from app.core.config import settings
 from app.core.database import Base
-# Import all models here to ensure they are registered with Base.metadata
-from app.models.user import User
-from app.models.department import Department
-from app.models.hospital import Hospital
-from app.models.patient import Patient
-from app.models.emergency import Emergency
+
+# Import ALL models so they are registered with Base.metadata before
+# Alembic generates or runs migrations.
+import app.models  # noqa: F401 – registers all 11 models via __init__.py
+from app.models.user import User  # noqa: F401
+from app.models.patient import Patient  # noqa: F401
+from app.models.doctor import Doctor  # noqa: F401
+from app.models.hospital import Hospital  # noqa: F401
+from app.models.department import Department  # noqa: F401
+from app.models.ambulance import Ambulance  # noqa: F401
+from app.models.emergency import EmergencyRequest  # noqa: F401
+from app.models.notification import Notification  # noqa: F401
+from app.models.medical_report import MedicalReport  # noqa: F401
+from app.models.prediction import Prediction  # noqa: F401
+from app.models.audit_log import AuditLog  # noqa: F401
 
 target_metadata = Base.metadata
 

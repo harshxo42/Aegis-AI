@@ -20,4 +20,9 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
-CMD ["sh", "-c", "python scripts/seed_hospitals.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+
+# Startup order matters:
+#   1. alembic upgrade head   — creates all 11 tables (idempotent)
+#   2. seed_hospitals.py      — inserts demo data (idempotent, skips existing)
+#   3. uvicorn                — starts the API server
+CMD ["sh", "-c", "set -e && alembic upgrade head && python scripts/seed_hospitals.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

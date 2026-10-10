@@ -1,5 +1,6 @@
+
 """
-Aegis AI – Department Model
+Aegis AI - Department Model
 
 Hospital departments with capacity and staffing information.
 """
@@ -13,12 +14,9 @@ from app.core.database import Base
 
 
 class Department(Base):
-
     __tablename__ = "departments"
 
-
-    # ── Foreign Keys ─────────────────────────────────────────────
-
+    # Foreign Keys
     hospital_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("hospitals.id", ondelete="CASCADE"),
@@ -26,26 +24,21 @@ class Department(Base):
         index=True,
     )
 
-
-    # ── Department Information ───────────────────────────────────
-
+    # Department Information
     name: Mapped[str] = mapped_column(
         String(200),
         nullable=False,
     )
-
 
     description: Mapped[Optional[str]] = mapped_column(
         String(500),
         nullable=True,
     )
 
-
     floor: Mapped[Optional[int]] = mapped_column(
         Integer,
         nullable=True,
     )
-
 
     capacity: Mapped[int] = mapped_column(
         Integer,
@@ -53,33 +46,32 @@ class Department(Base):
         nullable=False,
     )
 
-
     current_patients: Mapped[int] = mapped_column(
         Integer,
         default=0,
         nullable=False,
     )
 
-
-    # ── Head Doctor ───────────────────────────────────────────────
-
+    # Head Doctor
+    # use_alter=True resolves circular FK dependency:
+    # departments -> doctors -> departments
     head_doctor_id: Mapped[Optional[str]] = mapped_column(
         String(36),
-        ForeignKey("doctors.id", ondelete="SET NULL"),
+        ForeignKey(
+            "doctors.id",
+            name="fk_departments_head_doctor_id_doctors",
+            ondelete="SET NULL",
+            use_alter=True,
+        ),
         nullable=True,
     )
 
-
-    # ── Relationships ────────────────────────────────────────────
-
-
+    # Relationships
     hospital = relationship(
         "Hospital",
         back_populates="departments",
     )
 
-
-    # All doctors working in this department
     doctors = relationship(
         "Doctor",
         primaryjoin="Department.id == Doctor.department_id",
@@ -88,8 +80,6 @@ class Department(Base):
         lazy="selectin",
     )
 
-
-    # Department head doctor
     head_doctor = relationship(
         "Doctor",
         primaryjoin="Department.head_doctor_id == Doctor.id",
@@ -98,6 +88,5 @@ class Department(Base):
         uselist=False,
     )
 
-
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Department {self.name}>"

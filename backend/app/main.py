@@ -49,11 +49,18 @@ async def lifespan(app: FastAPI) -> Any:
     """
     print(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
     print(f"Environment: {settings.ENVIRONMENT}")
-    print(f"Database: {settings.DATABASE_URL.split('://')[0]}")
+    db_type = settings.DATABASE_URL.split('://')[0].split('+')[0]
+    print(f"Database: {db_type}")
 
-    # Initialize database
-    await init_db()
-    print("Database initialized")
+    # Initialize database tables ONLY for SQLite (local dev without Alembic).
+    # On PostgreSQL/Neon, Alembic runs `alembic upgrade head` via the
+    # Dockerfile CMD before uvicorn starts – do NOT run create_all here
+    # as it would conflict with Alembic's migration tracking.
+    if db_type == "sqlite":
+        await init_db()
+        print("Database tables initialized (SQLite dev mode)")
+    else:
+        print("PostgreSQL detected – skipping create_all (Alembic manages schema)")
 
     # Initialize Redis
     await init_redis()
